@@ -194,20 +194,36 @@ module PuppetX::AcmeKvstore
       return [] if certs.empty?
 
       candidates = certs.map { |cert| [kv_doc.issuer_certid(cert), kv_doc.issuer_certid_alternative(cert)] }
-      metas = kv_client.read_multi_with_index(candidates.flatten.uniq.map { |certid| issuer_key(kv_doc.meta_path(area, certid)) })
-      stored = stored_fingerprints(area, metas)
+      metas = issuer_metas(area, candidates.flatten.uniq)
+      # certid => fingerprint of the certificate it holds; also records the
+      # names given out in this bundle (two certificates may share a name).
+      taken = stored_fingerprints(area, metas)
 
-      certs.zip(candidates).map do |cert, names|
-        fingerprint = kv_doc.fingerprint(cert)
-        reuse = names.find { |certid| stored[certid] == fingerprint }
-        next reuse if reuse
+      certs.zip(candidates).map { |cert, names| place_issuer(area, cert, names, metas, taken) }
+    end
 
-        free = names.find { |certid| metas[issuer_key(kv_doc.meta_path(area, certid))][:value].nil? }
-        raise Puppet::Error, "acme_kvstore_certificate[#{resource[:certid]}]: #{names.join(' and ')} hold other certificates" if free.nil?
+    def issuer_metas(area, certids)
+      kv_client.read_multi_with_index(certids.map { |certid| issuer_key(kv_doc.meta_path(area, certid)) })
+    end
 
-        store_issuer(area, free, cert, metas[issuer_key(kv_doc.meta_path(area, free))])
-        free
+    # Reuses a name holding the same certificate, or stores it under the
+    # first free one. A name taken concurrently is re-read: reused if it now
+    # holds the same certificate, otherwise the next name is tried.
+    def place_issuer(area, cert, names, metas, taken)
+      fingerprint = kv_doc.fingerprint(cert)
+      reuse = names.find { |certid| taken[certid] == fingerprint }
+      return reuse if reuse
+
+      names.reject { |certid| taken.key?(certid) }.each do |certid|
+        if store_issuer(area, certid, cert, metas[issuer_key(kv_doc.meta_path(area, certid))])
+          taken[certid] = fingerprint
+          return certid
+        end
+
+        taken[certid] = stored_fingerprints(area, issuer_metas(area, [certid]))[certid]
+        return certid if taken[certid] == fingerprint
       end
+      raise Puppet::Error, "acme_kvstore_certificate[#{resource[:certid]}]: #{names.join(' and ')} hold other certificates"
     end
 
     # certid => SHA-256 fingerprint of the active version, for the existing entries.
@@ -231,10 +247,14 @@ module PuppetX::AcmeKvstore
       "#{current_prefix}/#{suffix}"
     end
 
+    # @return [Boolean] whether the entry was written; false if the name was
+    #   taken meanwhile (by another worker, CCI-UI or this bundle)
     def store_issuer(area, certid, cert, expected)
       now = kv_doc.now_iso8601
+      occupied = false
       kv_client.transactional_update(current_prefix, kv_doc.meta_path(area, certid), expected:) do |current|
-        next nil unless current.nil?
+        occupied = !current.nil?
+        next nil if occupied
 
         {
           kv_doc.meta_path(area, certid) => kv_doc.meta(
@@ -246,9 +266,11 @@ module PuppetX::AcmeKvstore
           ),
         }
       end
+      !occupied
     rescue StandardError => e
-      # Stored concurrently by another worker or CCI-UI: just as good.
       raise unless e.class.name.to_s.end_with?('::CasConflictError')
+
+      false
     end
 
     # Only the schedule's range and weekday count: a due renewal happens
