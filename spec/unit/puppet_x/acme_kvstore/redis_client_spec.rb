@@ -92,6 +92,23 @@ describe PuppetX::AcmeKvstore::RedisClient do
       expect(Redis).to receive(:new).with(hash_not_including(:username))
       described_class.new('host' => 'redis.example.com')
     end
+
+    it 'loads a gem installed after this file was loaded (same Puppet run)' do
+      redis_class = class_double(Redis)
+      hide_const('Redis')
+      expect(Gem).to receive(:clear_paths)
+      expect(described_class).to receive(:require).with('redis') { stub_const('Redis', redis_class) }
+      expect(redis_class).to receive(:new).with(hash_including(host: 'redis.example.com'))
+      described_class.new('host' => 'redis.example.com')
+    end
+
+    it 'fails clearly without the gem' do
+      hide_const('Redis')
+      expect(Gem).to receive(:clear_paths)
+      expect(described_class).to receive(:require).with('redis').and_raise(LoadError)
+      expect { described_class.new('host' => 'redis.example.com') }
+        .to raise_error(PuppetX::AcmeKvstore::RedisClient::Error, %r{'redis' gem is not installed})
+    end
   end
 
   describe '#write_atomic' do

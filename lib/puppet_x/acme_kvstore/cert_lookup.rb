@@ -2,8 +2,8 @@
 
 require 'puppet_x'
 require 'openssl'
-require 'puppet_x/acme_kvstore/crypto'
-require 'puppet_x/acme_kvstore/kv_document'
+require_relative 'crypto'
+require_relative 'kv_document'
 
 module PuppetX::AcmeKvstore
   # Read-only certificate lookup for acme_kvstore_cert_data and

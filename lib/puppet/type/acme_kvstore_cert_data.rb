@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 
-require 'puppet_x/acme_kvstore/read_only_property'
+require_relative '../../puppet_x/acme_kvstore/read_only_property'
 
 Puppet::Type.newtype(:acme_kvstore_cert_data) do
   @doc = <<-EOT

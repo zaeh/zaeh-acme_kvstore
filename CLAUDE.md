@@ -284,6 +284,13 @@ covered yet; the `:system_tests` Gemfile group (`voxpupuli-acceptance`) is there
   any node. Never add `include acme_kvstore` there or read `$acme_kvstore::*` variables; take
   parameters and fall back to `lookup('acme_kvstore::...')` in the body (puppet-lint forbids
   `lookup()` as a parameter default).
+- **Module-internal Ruby requires use `require_relative`** (`lib/puppet/...` -> `puppet_x/...`): a
+  Puppet server does not put module `lib/` directories on `$LOAD_PATH`, so `require 'puppet_x/...'`
+  works on agents (pluginsync libdir) and in specs but fails to compile there. Only Puppet's own
+  `require 'puppet_x'` stays a plain require. The E2E tests catch a regression.
+- **The `redis` gem may arrive mid-run**: `acme_kvstore::worker` installs it with `puppet_gem`, so
+  `RedisClient.load_gem` retries the `require` (after `Gem.clear_paths`) instead of trusting the
+  load-time attempt.
 - **`run_as_user`/`run_as_group`** are `Process.spawn` options, not shell `sudo`/`su` wrapping - they
   affect only the spawned `acme.sh`/`posthook_cmd` child, never the Puppet agent process itself.
 - **Never guess an `acme.sh` CLI flag or environment-variable convention.** Every flag currently in

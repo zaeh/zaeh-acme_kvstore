@@ -22,6 +22,13 @@ describe Puppet::Type.type(:acme_kvstore_cert_data).provider(:consul) do
     allow(provider).to receive(:kv_client).and_return(kv_client)
   end
 
+  it 'is the default provider, so Puppet picks it without a warning' do
+    type = Puppet::Type.type(:acme_kvstore_cert_data)
+    type.defaultprovider = nil
+    expect(Puppet).not_to receive(:warning)
+    expect(type.defaultprovider).to eq(described_class)
+  end
+
   it 'reads meta and certificate data in one combined call and caches the result' do
     allow(kv_client).to receive(:read_multi).with(['acme/web/certids/shop-example-com']).and_return(
       'acme/web/certids/shop-example-com' => {

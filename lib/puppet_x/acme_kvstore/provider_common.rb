@@ -3,9 +3,9 @@
 require 'puppet_x'
 require 'time'
 require 'openssl'
-require 'puppet_x/acme_kvstore/acmesh'
-require 'puppet_x/acme_kvstore/crypto'
-require 'puppet_x/acme_kvstore/kv_document'
+require_relative 'acmesh'
+require_relative 'crypto'
+require_relative 'kv_document'
 
 module PuppetX::AcmeKvstore
   # Workflow of the acme_kvstore_certificate providers (Consul and Redis

@@ -21,6 +21,15 @@ describe 'acme_kvstore::worker' do
         it { is_expected.not_to contain_user('root') }
         it { is_expected.to contain_file('/root/.acme.sh').with_owner('root').with_group('root') }
         it { is_expected.to contain_file('/var/www/acme-challenge').with_owner('root').with_group('root') }
+
+        it 'creates the webroot with missing parents, without managing them' do
+          is_expected.to contain_exec('acme_kvstore-webroot').with(
+            'command' => ['mkdir', '-p', '/var/www/acme-challenge'], 'creates' => '/var/www/acme-challenge',
+          ).that_comes_before('File[/var/www/acme-challenge]')
+        end
+
+        it { is_expected.not_to contain_file('/var/www') }
+        it { is_expected.to contain_exec('acme_kvstore-install-acmesh').with_cwd('/opt/acme.sh-src') }
         it { is_expected.to contain_package('acme_kvstore-git').with_name('git') }
         it { is_expected.to contain_vcsrepo('/opt/acme.sh-src').with_revision('3.0.9').with_force(false) }
         it { is_expected.to contain_file('/var/log/acme.sh').with_ensure('directory').with_owner('root').with_mode('0750') }
