@@ -12,7 +12,9 @@ opening an issue.
 - [CLAUDE.md](CLAUDE.md) collects the module's conventions and pitfalls
   (for people and AI assistants alike) - the binding rules for code, tests
   and the type/provider design are there.
-- Keep changes focused; open an issue first for larger changes.
+- Keep changes focused; open an issue first for larger changes. Issues use
+  forms for bug reports and feature requests, and pull requests come with a
+  checklist - please fill them in.
 
 ## Development setup
 

@@ -1,0 +1,82 @@
+---
+name: Bug report
+description: Something does not work as documented.
+labels: [bug]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for reporting! **Never paste secrets** - private keys, tokens, passwords,
+        area secrets or EAB credentials - into this issue; replace them with placeholders.
+        Security problems belong in a private report, see SECURITY.md.
+  - type: checkboxes
+    id: not_security
+    attributes:
+      label: Not a security issue
+      options:
+        - label: This is not a vulnerability, and the issue contains no secrets.
+          required: true
+  - type: input
+    id: version
+    attributes:
+      label: Module version or commit
+      placeholder: 0.1.0 / 1e970b6
+    validations:
+      required: true
+  - type: input
+    id: puppet
+    attributes:
+      label: OpenVox/Puppet version (agent and server)
+      placeholder: OpenVox 8.29.0 agent, OpenVox Server 8.17.0
+    validations:
+      required: true
+  - type: dropdown
+    id: backend
+    attributes:
+      label: KV backend
+      options:
+        - Consul
+        - Redis
+        - not relevant
+    validations:
+      required: true
+  - type: dropdown
+    id: component
+    attributes:
+      label: Affected part
+      multiple: true
+      options:
+        - ACME worker (issuance/renewal, acme.sh)
+        - acme_kvstore::deploy
+        - acme_kvstore::lookup_cert
+        - acme_kvstore_cert_data
+        - Configuration/Hiera
+        - Documentation
+        - Other
+    validations:
+      required: true
+  - type: textarea
+    id: what_happened
+    attributes:
+      label: What happened?
+      description: Include the exact error message, if any.
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: What did you expect?
+    validations:
+      required: true
+  - type: textarea
+    id: reproduce
+    attributes:
+      label: How to reproduce
+      description: Steps, and the relevant Puppet code or Hiera data (secrets replaced).
+      render: yaml
+  - type: textarea
+    id: logs
+    attributes:
+      label: Relevant log output
+      description: Puppet run output, acme.sh log excerpt (secrets removed).
+      render: text
