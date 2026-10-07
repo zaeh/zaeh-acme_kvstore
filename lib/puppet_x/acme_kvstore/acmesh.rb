@@ -105,7 +105,9 @@ module PuppetX::AcmeKvstore
 
     def self.build_command(acmesh_path, domains, key_type, key_size, server, dns_provider,
                            challenge_alias, domain_alias, paths, dnssleep:, webroot:)
-      cmd = [acmesh_path, '--issue', '--server', server]
+      # --force: this module decides when to issue (renewal window, drift);
+      # without it acme.sh skips (exit 2) while its own renewal date is ahead.
+      cmd = [acmesh_path, '--issue', '--force', '--server', server]
       domains.each { |d| cmd += ['-d', d] }
 
       if dns_provider && !dns_provider.to_s.empty?

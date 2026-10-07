@@ -64,3 +64,18 @@ jobs:
           bundler-cache: true
       - name: rspec-puppet and unit specs
         run: bundle exec rake spec
+
+  acceptance:
+    name: Acceptance tests (Consul, Redis, acme.sh + Pebble)
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: ruby/setup-ruby@14594264cd68ce8a2345dd349bc3d138a4ef85c8 # v1.327.0
+        with:
+          ruby-version: '3.2'
+          bundler-cache: true
+      - name: Real Consul, Redis and acme.sh against Pebble (containers)
+        run: bundle exec rake acceptance

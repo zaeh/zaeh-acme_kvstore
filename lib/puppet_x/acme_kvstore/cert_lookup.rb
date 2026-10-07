@@ -136,12 +136,17 @@ module PuppetX::AcmeKvstore
 
     # A failed search (e.g. Redis without +scan) only means "no chain".
     def search_candidates
-      @kv_client.read_prefix(path("#{@area}/certs/")).values.filter_map do |value|
-        OpenSSL::X509::Certificate.new(value['pem']) if value.is_a?(Hash) && value['pem']
-      end
+      @kv_client.read_prefix(path("#{@area}/certs/")).values.filter_map { |value| parse_candidate(value) }
     rescue StandardError => e
       @chain_error = "#{e.class}: #{e.message}"
       []
+    end
+
+    # A document that is no readable certificate is just not a candidate.
+    def parse_candidate(value)
+      OpenSSL::X509::Certificate.new(value['pem']) if value.is_a?(Hash) && value['pem'].is_a?(String)
+    rescue OpenSSL::X509::CertificateError
+      nil
     end
 
     def issuer?(candidate, cert)

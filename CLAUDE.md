@@ -101,16 +101,20 @@ RBENV_VERSION=4.0.7 OPENVOX_GEM_VERSION='~> 9.0' bundle exec rake test
 
 CI (`.github/workflows/ci.yml`, GitHub Actions) runs on pushes to `main` and on pull requests:
 `rake validate lint rubocop metadata_lint` plus a warning-free, up-to-date `REFERENCE.md`, and
-`rake spec` for OpenVox 8 / Ruby 3.2 and OpenVox 9 (`~> 9.0`) / Ruby 4.0. Actions are pinned
+`rake spec` for OpenVox 8 / Ruby 3.2 and OpenVox 9 (`~> 9.0`) / Ruby 4.0, and `rake acceptance`. Actions are pinned
 to commit SHAs (Dependabot updates them weekly) and the token is read-only. `rake jruby:compat` and
 PDK are deliberately not part of CI. Keep the matrix in step with the lanes above.
 
-This module does not currently ship acceptance tests (no `spec/acceptance/`, no `provision.yaml`):
-its actual functionality needs a real, reachable Consul or Redis cluster (see
-`docs/architecture.md`), not just a provisioned bare OS container, so a meaningful Litmus-based
-acceptance suite would need real test infrastructure beyond what a provisioned container gives you.
-The `:system_tests` Gemfile group (`voxpupuli-acceptance`) is present for whoever adds real tests
-later.
+Acceptance tests (`spec/acceptance/`, not Litmus) run against real services in containers from
+`spec/acceptance/compose.yml` - Consul with ACLs, Redis with ACL users, and Pebble (Let's Encrypt's
+test CA, `PEBBLE_VA_ALWAYS_VALID`) - with the real providers, KV clients and acme.sh 3.0.9 (tarball,
+SHA-256 pinned in `acceptance_helper.rb`): `bundle exec rake acceptance` (up, run, down; needs Docker
+with compose). They are deliberately outside `rake spec`'s pattern (which includes `spec/integration/`).
+Rules: pin image versions; credentials are generated per run or throwaway test values; each run
+needs fresh containers (the helper creates ACL policies/users once). Pebble's default profile issues
+6-day certificates, so the specs use `renew_before_days: 1`. Consul hides keys a token may not read
+(reads return nothing), while Redis refuses them with `NOPERM`. A full Puppet agent run is not
+covered yet; the `:system_tests` Gemfile group (`voxpupuli-acceptance`) is there for that.
 
 ---
 
@@ -286,7 +290,8 @@ later.
   `acmesh.rb` (`--challenge-alias`, `--domain-alias`, `--eab-kid`, `--eab-hmac-key`,
   `--register-account`, the `HTTP(S)_PROXY` convention) was individually verified against
   acme.sh's own documentation before being added; `--dnssleep` (which also disables acme.sh's own
-  public DNS polling), `--log`, `--log-level` (1 or 2 only) and `--webroot` were verified against
+  public DNS polling), `--log`, `--log-level` (1 or 2 only), `--webroot` and `--force` (which `--issue`
+  needs: without it acme.sh skips with exit 2 while its own renewal date is ahead) were verified against
   the acme.sh 3.0.9 source, as was `dns_nsupdate` expecting `NSUPDATE_KEY` to be a key *file path*,
   and `_findHook` looking in `<home>/dnsapi/<hook>.sh` first, then sourcing it (read access
   suffices) and calling `<hook>_add`/`<hook>_rm` (basis of `acme_kvstore::dnsapi_scripts`).

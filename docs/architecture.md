@@ -103,7 +103,9 @@ by `acme_kvstore::certificate` above.
 3. Only when `exists?` returns `false` does Puppet call `create`:
    - The CA profile's account (if any) is registered/reconfirmed
      (`acme.sh --register-account`)
-   - `acme.sh --issue ...` is executed (HTTP-01 via the worker's webroot,
+   - `acme.sh --issue --force ...` is executed - `--force` because this
+     module decides when to issue; without it acme.sh would skip while its
+     own renewal date lies ahead (HTTP-01 via the worker's webroot,
      DNS-01 via a resolved DNS profile's hook with `--dnssleep`, optionally
      in DNS alias mode; logging to the worker's acme.sh log file), subject
      to `exec_timeout` (see [profiles.md](profiles.md#exec_timeout)) and,

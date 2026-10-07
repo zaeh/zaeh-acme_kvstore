@@ -52,8 +52,15 @@ bundle exec rake jruby:compat
 JRUBY_COMPAT_VERSION=10.1.2.0 bundle exec rake jruby:compat
 ```
 
-The CI (GitHub Actions) runs the static checks and the specs for both
-OpenVox versions on every pull request.
+Acceptance tests run real Consul, Redis and acme.sh against Pebble (Let's
+Encrypt's test CA) in containers; they need Docker with the compose plugin:
+
+```bash
+bundle exec rake acceptance       # fresh containers, all acceptance specs, cleanup
+```
+
+The CI (GitHub Actions) runs the static checks, the specs for both OpenVox
+versions and the acceptance tests on every pull request.
 
 `openvox-strings` is pinned exactly in the `Gemfile`, because `REFERENCE.md`
 is committed and checked by CI. To update it, raise the pin, regenerate

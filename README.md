@@ -16,10 +16,11 @@ silently overwrite one another.
 ## Status
 
 Version 0.1.0, **in development** and not yet used in production. The unit
-tests cover Puppet/OpenVox 8 and OpenVox 9, and the
-lookup code is checked under the Puppet server's JRuby; there are no
-acceptance tests against real Consul/Redis clusters yet. Expect changes
-before 1.0.0.
+tests cover Puppet/OpenVox 8 and OpenVox 9, the lookup code is checked under
+the Puppet server's JRuby, and acceptance tests issue certificates with
+acme.sh against Pebble (Let's Encrypt's test CA) into real Consul and Redis,
+including their ACLs. A full Puppet agent run is not covered yet. Expect
+changes before 1.0.0.
 
 ## Requirements
 
