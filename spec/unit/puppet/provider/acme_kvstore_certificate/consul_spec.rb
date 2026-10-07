@@ -284,17 +284,16 @@ describe Puppet::Type.type(:acme_kvstore_certificate).provider(:consul) do
 
     describe 'chain certificates' do
       let(:pki) { AcmeKvstoreSpecPki.chain }
+      # Another CA certificate with the same CN and expiry date, i.e. the same name.
+      let(:namesake) do
+        AcmeKvstoreSpecPki.cert(subject: '/O=Test/CN=Test R1', key: OpenSSL::PKey::RSA.new(1024), ca_flag: true,
+                                not_after: int.not_after)
+      end
 
       def int = pki[:intermediate]
       def name = PuppetX::AcmeKvstore::KvDocument.issuer_certid(int)
       def alt = PuppetX::AcmeKvstore::KvDocument.issuer_certid_alternative(int)
       def meta_key_of(certid) = "acme/web/certids/#{certid}"
-
-      # Another CA certificate with the same CN and expiry date, i.e. the same name.
-      def namesake
-        AcmeKvstoreSpecPki.cert(subject: '/O=Test/CN=Test R1', key: OpenSSL::PKey::RSA.new(1024), ca_flag: true,
-                                not_after: int.not_after)
-      end
 
       def stub_issuer_metas(name_meta: nil, alt_meta: nil)
         expect(kv_client).to receive(:read_multi_with_index).with([meta_key_of(name), meta_key_of(alt)]).and_return(
@@ -372,13 +371,58 @@ describe Puppet::Type.type(:acme_kvstore_certificate).provider(:consul) do
         expect { provider.create }.to raise_error(Puppet::Error, %r{#{name} and #{alt} hold other certificates})
       end
 
-      it 'accepts that another writer stored it concurrently' do
-        stub_issuer_metas
-        expect(kv_client).to receive(:transactional_update).with('acme', "web/certids/#{name}", anything)
+      # A name taken between the read and the write is read again.
+      def expect_concurrent_write(certid, pem)
+        expect(kv_client).to receive(:transactional_update).with('acme', "web/certids/#{certid}", anything)
                                                            .and_raise(PuppetX::AcmeKvstore::ConsulClient::CasConflictError, '409')
+        expect(kv_client).to receive(:read_multi_with_index).with([meta_key_of(certid)])
+                                                            .and_return(meta_key_of(certid) => { value: { 'active_version' => 1 }, index: 7 })
+        expect(kv_client).to receive(:read_multi).with(["acme/web/certs/#{certid}/1"]).and_return("acme/web/certs/#{certid}/1" => { 'pem' => pem })
+      end
+
+      it 'reuses a name another writer stored the same certificate under concurrently' do
+        stub_issuer_metas
+        expect_concurrent_write(name, int.to_pem)
+        expect(kv_client).not_to receive(:transactional_update).with('acme', "web/certids/#{alt}", anything)
         expect_leaf_write([name])
 
         expect(provider.create).to be(true)
+      end
+
+      it 'moves on to the alternative name when another writer stored a different certificate concurrently' do
+        stub_issuer_metas
+        expect_concurrent_write(name, namesake.to_pem)
+        expect(kv_client).to receive(:transactional_update).with('acme', "web/certids/#{alt}", expected: { value: nil, index: 0 }).and_return(true)
+        expect_leaf_write([alt])
+
+        provider.create
+      end
+
+      it 'fails when both names were taken concurrently by other certificates' do
+        stub_issuer_metas
+        expect_concurrent_write(name, namesake.to_pem)
+        expect_concurrent_write(alt, namesake.to_pem)
+        expect(kv_client).not_to receive(:transactional_update).with('acme', 'web/certids/shop-example-com', anything)
+
+        expect { provider.create }.to raise_error(Puppet::Error, %r{#{name} and #{alt} hold other certificates})
+      end
+
+      it 'gives two certificates of one chain with the same name separate entries' do
+        namesake_alt = PuppetX::AcmeKvstore::KvDocument.issuer_certid_alternative(namesake)
+        allow(PuppetX::AcmeKvstore::Acmesh).to receive(:issue_or_renew).and_return(issued(cert: pki[:leaf].to_pem, chain: int.to_pem + namesake.to_pem))
+        expect(kv_client).to receive(:read_multi_with_index).with([meta_key_of(name), meta_key_of(alt), meta_key_of(namesake_alt)])
+                                                            .and_return([name, alt, namesake_alt].to_h { |certid| [meta_key_of(certid), { value: nil, index: 0 }] })
+        expect(kv_client).to receive(:transactional_update).with('acme', "web/certids/#{name}", anything) do |*_args, &block|
+          expect(block.call(nil)["web/certs/#{name}/1"]).to include('pem' => int.to_pem)
+          true
+        end
+        expect(kv_client).to receive(:transactional_update).with('acme', "web/certids/#{namesake_alt}", anything) do |*_args, &block|
+          expect(block.call(nil)["web/certs/#{namesake_alt}/1"]).to include('pem' => namesake.to_pem)
+          true
+        end
+        expect_leaf_write([name, namesake_alt])
+
+        provider.create
       end
 
       it 'with store_issuers => false: neither reads nor writes issuer entries, and records no issuers' do

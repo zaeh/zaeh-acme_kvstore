@@ -258,7 +258,11 @@ its CN and expiry date (UTC), `<cn>_<YYYY-MM-DD>`:
 - The rare other certificate with the same CN and expiry date is stored as
   `<cn>_<YYYY-MM-DD>_<first 8 hex characters of its SHA-256 fingerprint>`;
   an existing entry is never overwritten, so a name never points to
-  another certificate.
+  another certificate. This also holds for two such certificates in one
+  chain, and when another worker or CCI-UI takes a name at the same time:
+  the worker re-reads it, reuses it only if it holds the same certificate,
+  otherwise tries the alternative name, and fails for this run (retrying
+  on the next) if both hold other certificates.
 - Trust stores in Hiera can therefore list CA certificates by certid, e.g.
   `[isrg-root-x1_2035-06-04, isrg-root-x2_2040-09-17]`.
 
