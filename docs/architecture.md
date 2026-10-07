@@ -166,8 +166,9 @@ If two workers (or two overlapping Puppet runs) attempt to renew the same
 for this resource and is retried cleanly on the next scheduled run, since
 it will simply re-read the now-current meta document. See
 [consul.md](consul.md) and [redis.md](redis.md) for backend-specific
-details, and [security.md](security.md) for how this interacts with key
-rotation.
+details. Rotating an area secret is not covered by compare-and-set: it
+needs all writers stopped (see
+[security.md](security.md#area-secret-rotation)).
 
 ## KV data formats
 

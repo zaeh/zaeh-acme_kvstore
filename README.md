@@ -48,7 +48,7 @@ before 1.0.0.
 - [docs/consul.md](docs/consul.md) - Consul backend, KV layout, TLS/mTLS, CAS
 - [docs/redis.md](docs/redis.md) - Redis backend, KV layout, TLS/mTLS, CAS
 - [docs/lookup_cert.md](docs/lookup_cert.md) - delivering certificates to other nodes from the Puppet server
-- [docs/security.md](docs/security.md) - encryption, area/CA secrets, key rotation, CA whitelisting
+- [docs/security.md](docs/security.md) - encryption, area/CA secrets, area secret rotation, CA whitelisting
 - [docs/migration.md](docs/migration.md) - migrating from `puppet-acme`
 - [docs/cci-ui.md](docs/cci-ui.md) - storage format shared with CCI-UI, settings for using it
 
