@@ -5,8 +5,11 @@ FROM ubuntu:noble-20260917
 
 ARG OPENVOX_VERSION=8
 ARG AGENT_VERSION
+# archive.ubuntu.com can be very slow; CI uses the Azure mirror next to its runners.
+ARG UBUNTU_MIRROR=http://archive.ubuntu.com/ubuntu/
 
-RUN apt-get update \
+RUN sed -i "s#http://\(archive\|security\).ubuntu.com/ubuntu/#${UBUNTU_MIRROR}#" /etc/apt/sources.list.d/ubuntu.sources \
+ && apt-get update \
  && apt-get install -y --no-install-recommends ca-certificates curl \
  && curl -fsSLo /tmp/openvox-release.deb "https://apt.voxpupuli.org/openvox${OPENVOX_VERSION}-release-ubuntu24.04.deb" \
  && apt-get install -y /tmp/openvox-release.deb \

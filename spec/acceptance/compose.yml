@@ -52,8 +52,17 @@ services:
       OPENVOXSERVER_JAVA_ARGS: -Xms512m -Xmx1024m
     volumes:
       - ../..:/etc/puppetlabs/code/environments/production/modules/acme_kvstore:ro
-      - ../fixtures/modules/stdlib:/etc/puppetlabs/code/environments/production/modules/stdlib:ro
-      - ../fixtures/modules/vcsrepo:/etc/puppetlabs/code/environments/production/modules/vcsrepo:ro
+      # Fail instead of creating empty root-owned directories without spec_prep.
+      - type: bind
+        source: ../fixtures/modules/stdlib
+        target: /etc/puppetlabs/code/environments/production/modules/stdlib
+        read_only: true
+        bind: { create_host_path: false }
+      - type: bind
+        source: ../fixtures/modules/vcsrepo
+        target: /etc/puppetlabs/code/environments/production/modules/vcsrepo
+        read_only: true
+        bind: { create_host_path: false }
     healthcheck:
       test: [CMD, /healthcheck.sh]
       interval: 5s
@@ -66,6 +75,7 @@ services:
       dockerfile: agent-${E2E_OS:-ubuntu24.04}.Dockerfile
       args:
         AGENT_VERSION: 8.29.0
+        UBUNTU_MIRROR: ${E2E_UBUNTU_MIRROR:-http://archive.ubuntu.com/ubuntu/}
     image: acme_kvstore_e2e_agent:${E2E_OS:-ubuntu24.04}
     hostname: worker
     domainname: acceptance.test

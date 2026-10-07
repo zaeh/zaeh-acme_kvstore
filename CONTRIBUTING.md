@@ -68,6 +68,9 @@ bundle exec rake acceptance:e2e                  # agents on Ubuntu 24.04
 E2E_OS=rocky9 bundle exec rake acceptance:e2e    # agents on Rocky 9
 ```
 
+If `archive.ubuntu.com` is slow for you, use another Ubuntu mirror, e.g.
+`E2E_UBUNTU_MIRROR=http://azure.archive.ubuntu.com/ubuntu/`.
+
 The CI (GitHub Actions) runs the static checks, the specs for both OpenVox
 versions, the acceptance tests and the end-to-end tests on every pull
 request.
