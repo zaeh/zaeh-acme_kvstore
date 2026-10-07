@@ -75,16 +75,37 @@ retried cleanly on the next scheduled run. See
 
 ## Area secret rotation
 
-Rotating an area secret requires re-encrypting all affected key documents
-(old documents can no longer be decrypted otherwise). Recommended
-approach:
+The module follows [CCI-UI](cci-ui.md)'s concept: an area secret is rotated
+**within the same area**, as an offline operator procedure. Never create a
+new area for it - area names are part of every KV path and of the
+authenticated context `cci:<area>:<certid>/<version>`, so they must not be
+renamed or reused. Merely replacing the secret in Hiera is not a rotation:
+every existing key version stays encrypted with the old secret, and renewals
+only add new versions.
 
-1. Create a new, separately versioned area with the new secret (e.g.
-   `web-v2`).
-2. Route new certificates/renewals through the new area.
-3. Existing certificates are automatically migrated to the new encryption
-   on their next renewal (every `create` run encrypts with whichever
-   `area_secret` is currently configured).
+1. **Stop every writer of the area**: the ACME workers (e.g.
+   `puppet agent --disable '<reason>'`), CCI-UI's web and indexer services
+   and any other external writer. Back up the KV store (Consul snapshot or
+   Redis backup) and the old secret, through separate protected channels.
+2. **Re-encrypt every key document** of the area
+   (`<prefix>/<area>/keys/<certid>/<version>`): decrypt with the old secret
+   and encrypt with the new one, keeping the authenticated context
+   `cci:<area>:<certid>/<version>` unchanged. This needs credentials that may
+   overwrite existing keys (the workers' may only create them). Neither this
+   module nor CCI-UI ships a tool for this step; CCI-UI's own rotation helper
+   covers only its CSR secrets. Never leave old and new material mixed.
+3. **Switch the secret consistently for all readers and writers at once**:
+   `acme_kvstore::areas.<area>.secret` in Hiera (workers and the Puppet
+   servers compiling `acme_kvstore::deploy`) and CCI-UI's `CCI_AREA_KEYS`.
+   Until then, catalogues that decrypt a key fail to compile, so consumer
+   nodes keep their existing files.
+4. **Restart and verify**: re-enable the workers, check a key read under the
+   new secret (e.g. one `acme_kvstore::deploy` run with `key_path`), then
+   remove the old secret from wherever it was supplied temporarily. If a step
+   fails, keep the writers stopped and restore the backup.
+
+Keep old secrets only as long as backups encrypted with them exist; losing an
+area secret loses access to that area's private keys.
 
 ## CA whitelisting
 

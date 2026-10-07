@@ -35,3 +35,44 @@ services:
     ports:
       - 127.0.0.1:14000:14000
       - 127.0.0.1:15000:15000
+
+  # End-to-end tests (profile e2e, `bundle exec rake acceptance:e2e`): an
+  # OpenVox server compiling the module, an ACME worker and a consumer node.
+  openvoxserver:
+    profiles: [e2e]
+    build:
+      context: e2e
+      dockerfile: server.Dockerfile
+    image: acme_kvstore_e2e_server
+    hostname: openvoxserver
+    environment:
+      DNS_ALT_NAMES: openvoxserver
+      USE_OPENVOXDB: 'false'
+      OPENVOXSERVER_ENVIRONMENT_TIMEOUT: '0'
+      OPENVOXSERVER_JAVA_ARGS: -Xms512m -Xmx1024m
+    volumes:
+      - ../..:/etc/puppetlabs/code/environments/production/modules/acme_kvstore:ro
+      - ../fixtures/modules/stdlib:/etc/puppetlabs/code/environments/production/modules/stdlib:ro
+      - ../fixtures/modules/vcsrepo:/etc/puppetlabs/code/environments/production/modules/vcsrepo:ro
+    healthcheck:
+      test: [CMD, /healthcheck.sh]
+      interval: 5s
+      retries: 60
+
+  worker:
+    profiles: [e2e]
+    build: &agent
+      context: e2e
+      dockerfile: agent-${E2E_OS:-ubuntu24.04}.Dockerfile
+      args:
+        AGENT_VERSION: 8.29.0
+    image: acme_kvstore_e2e_agent:${E2E_OS:-ubuntu24.04}
+    hostname: worker
+    domainname: acceptance.test
+
+  consumer:
+    profiles: [e2e]
+    build: *agent
+    image: acme_kvstore_e2e_agent:${E2E_OS:-ubuntu24.04}
+    hostname: consumer
+    domainname: acceptance.test

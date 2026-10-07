@@ -62,10 +62,19 @@ class acme_kvstore::worker (
     }
   }
 
+  # Also creates missing parents (e.g. /var/www on a worker without a web
+  # server) without managing them, so a web server module still can.
+  exec { 'acme_kvstore-webroot':
+    command => ['mkdir', '-p', $webroot],
+    creates => $webroot,
+    path    => ['/usr/bin', '/bin'],
+  }
+
   file { $webroot:
-    ensure => directory,
-    owner  => $user,
-    group  => $group,
+    ensure  => directory,
+    owner   => $user,
+    group   => $group,
+    require => Exec['acme_kvstore-webroot'],
   }
 
   if $install_method == 'git' {
@@ -80,6 +89,7 @@ class acme_kvstore::worker (
     exec { 'acme_kvstore-install-acmesh':
       command => "/opt/acme.sh-src/acme.sh --install --home ${home} --nocron",
       creates => "${home}/acme.sh",
+      cwd     => '/opt/acme.sh-src', # --install copies acme.sh from the working directory
       path    => ['/usr/bin', '/bin', '/opt/acme.sh-src'],
       require => Vcsrepo['/opt/acme.sh-src'],
     }

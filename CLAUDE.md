@@ -101,7 +101,8 @@ RBENV_VERSION=4.0.7 OPENVOX_GEM_VERSION='~> 9.0' bundle exec rake test
 
 CI (`.github/workflows/ci.yml`, GitHub Actions) runs on pushes to `main` and on pull requests:
 `rake validate lint rubocop metadata_lint` plus a warning-free, up-to-date `REFERENCE.md`, and
-`rake spec` for OpenVox 8 / Ruby 3.2 and OpenVox 9 (`~> 9.0`) / Ruby 4.0, and `rake acceptance`. Actions are pinned
+`rake spec` for OpenVox 8 / Ruby 3.2 and OpenVox 9 (`~> 9.0`) / Ruby 4.0, `rake acceptance`, and
+`rake acceptance:e2e` for Ubuntu 24.04 and Rocky 9. Actions are pinned
 to commit SHAs (Dependabot updates them weekly) and the token is read-only. `rake jruby:compat` and
 PDK are deliberately not part of CI. Keep the matrix in step with the lanes above.
 
@@ -113,8 +114,16 @@ with compose). They are deliberately outside `rake spec`'s pattern (which includ
 Rules: pin image versions; credentials are generated per run or throwaway test values; each run
 needs fresh containers (the helper creates ACL policies/users once). Pebble's default profile issues
 6-day certificates, so the specs use `renew_before_days: 1`. Consul hides keys a token may not read
-(reads return nothing), while Redis refuses them with `NOPERM`. A full Puppet agent run is not
-covered yet; the `:system_tests` Gemfile group (`voxpupuli-acceptance`) is there for that.
+(reads return nothing), while Redis refuses them with `NOPERM`.
+
+End-to-end tests (`spec/acceptance/e2e/`, compose profile `e2e`, `bundle exec rake acceptance:e2e`,
+agent OS via `E2E_OS=ubuntu24.04|rocky9`) add an OpenVox 8 server (official image plus the `redis`
+gem in its JRuby), an ACME worker and a consumer node (images built from the Vox Pupuli packages,
+Pebble's TLS CA in the system trust store). The helper writes `site.pp` and Hiera data with the
+per-run credentials into the server and runs `puppet agent --test`, checking issuance as a dedicated
+user, deployment, renewal, `status` gating, idempotence (exit 0 on the second run) and that no run
+warns. OpenVox 9 is deliberately not covered there (build time); its server JRuby is checked only by
+`rake jruby:compat`. The `:system_tests` Gemfile group (`voxpupuli-acceptance`) stays unused.
 
 ---
 
@@ -284,6 +293,13 @@ covered yet; the `:system_tests` Gemfile group (`voxpupuli-acceptance`) is there
   any node. Never add `include acme_kvstore` there or read `$acme_kvstore::*` variables; take
   parameters and fall back to `lookup('acme_kvstore::...')` in the body (puppet-lint forbids
   `lookup()` as a parameter default).
+- **Module-internal Ruby requires use `require_relative`** (`lib/puppet/...` -> `puppet_x/...`): a
+  Puppet server does not put module `lib/` directories on `$LOAD_PATH`, so `require 'puppet_x/...'`
+  works on agents (pluginsync libdir) and in specs but fails to compile there. Only Puppet's own
+  `require 'puppet_x'` stays a plain require. The E2E tests catch a regression.
+- **The `redis` gem may arrive mid-run**: `acme_kvstore::worker` installs it with `puppet_gem`, so
+  `RedisClient.load_gem` retries the `require` (after `Gem.clear_paths`) instead of trusting the
+  load-time attempt.
 - **`run_as_user`/`run_as_group`** are `Process.spawn` options, not shell `sudo`/`su` wrapping - they
   affect only the spawned `acme.sh`/`posthook_cmd` child, never the Puppet agent process itself.
 - **Never guess an `acme.sh` CLI flag or environment-variable convention.** Every flag currently in
@@ -310,7 +326,7 @@ covered yet; the `:system_tests` Gemfile group (`voxpupuli-acceptance`) is there
 
 ## metadata.json conventions
 
-- `metadata.json` is the source of truth for the supported OS matrix (RedHat, Debian, Ubuntu); `on_supported_os` in specs derives from it. Update it when adding/removing platform support.
+- `metadata.json` is the source of truth for the supported OS matrix (RedHat, Rocky, Debian, Ubuntu); `on_supported_os` in specs derives from it. Update it when adding/removing platform support.
 - Bump `version` per [SemVer](https://semver.org): breaking change -> major, feature -> minor, fix -> patch.
 - `requirements` allows Puppet 8 and 9 (`>= 8.0.0 < 10.0.0`); keep code and specs in step with both lanes.
 - `license` is `AGPL-3.0-only` (SPDX), matching the verbatim GNU text in `LICENSE`.

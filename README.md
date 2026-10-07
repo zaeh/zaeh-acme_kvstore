@@ -19,12 +19,13 @@ Version 0.1.0, **in development** and not yet used in production. The unit
 tests cover Puppet/OpenVox 8 and OpenVox 9, the lookup code is checked under
 the Puppet server's JRuby, and acceptance tests issue certificates with
 acme.sh against Pebble (Let's Encrypt's test CA) into real Consul and Redis,
-including their ACLs. A full Puppet agent run is not covered yet. Expect
-changes before 1.0.0.
+including their ACLs. End-to-end tests run a real OpenVox 8 server with an
+ACME worker and a consumer node (Ubuntu 24.04 and Rocky 9). Expect changes
+before 1.0.0.
 
 ## Requirements
 
-- Puppet or OpenVox 8 or 9, on Linux (RedHat, Debian, Ubuntu - see
+- Puppet or OpenVox 8 or 9, on Linux (RedHat, Rocky, Debian, Ubuntu - see
   `metadata.json`)
 - a **Consul** cluster (KV with ACLs) or **Redis** (6+, ACL users; a sharded
   Redis Cluster is not supported), reachable
@@ -47,7 +48,7 @@ changes before 1.0.0.
 - [docs/consul.md](docs/consul.md) - Consul backend, KV layout, TLS/mTLS, CAS
 - [docs/redis.md](docs/redis.md) - Redis backend, KV layout, TLS/mTLS, CAS
 - [docs/lookup_cert.md](docs/lookup_cert.md) - delivering certificates to other nodes from the Puppet server
-- [docs/security.md](docs/security.md) - encryption, area/CA secrets, key rotation, CA whitelisting
+- [docs/security.md](docs/security.md) - encryption, area/CA secrets, area secret rotation, CA whitelisting
 - [docs/migration.md](docs/migration.md) - migrating from `puppet-acme`
 - [docs/cci-ui.md](docs/cci-ui.md) - storage format shared with CCI-UI, settings for using it
 

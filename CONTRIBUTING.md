@@ -59,8 +59,18 @@ Encrypt's test CA) in containers; they need Docker with the compose plugin:
 bundle exec rake acceptance       # fresh containers, all acceptance specs, cleanup
 ```
 
+End-to-end tests compile the module on a real OpenVox 8 server and run the
+agent on an ACME worker and a consumer node (container images are built
+locally on the first run):
+
+```bash
+bundle exec rake acceptance:e2e                  # agents on Ubuntu 24.04
+E2E_OS=rocky9 bundle exec rake acceptance:e2e    # agents on Rocky 9
+```
+
 The CI (GitHub Actions) runs the static checks, the specs for both OpenVox
-versions and the acceptance tests on every pull request.
+versions, the acceptance tests and the end-to-end tests on every pull
+request.
 
 `openvox-strings` is pinned exactly in the `Gemfile`, because `REFERENCE.md`
 is committed and checked by CI. To update it, raise the pin, regenerate

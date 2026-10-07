@@ -22,6 +22,13 @@ describe Puppet::Type.type(:acme_kvstore_certificate).provider(:consul) do
     allow(provider).to receive(:kv_client).and_return(kv_client)
   end
 
+  it 'is the default provider, so Puppet picks it without a warning' do
+    type = Puppet::Type.type(:acme_kvstore_certificate)
+    type.defaultprovider = nil
+    expect(Puppet).not_to receive(:warning)
+    expect(type.defaultprovider).to eq(described_class)
+  end
+
   def meta_key
     'acme/web/certids/shop-example-com'
   end

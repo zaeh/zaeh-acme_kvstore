@@ -1,8 +1,8 @@
 # frozen_string_literal: true
 
-require 'puppet_x/acme_kvstore/cert_lookup'
-require 'puppet_x/acme_kvstore/consul_client'
-require 'puppet_x/acme_kvstore/redis_client'
+require_relative '../../../puppet_x/acme_kvstore/cert_lookup'
+require_relative '../../../puppet_x/acme_kvstore/consul_client'
+require_relative '../../../puppet_x/acme_kvstore/redis_client'
 
 # @summary Looks up a certificate (and optionally its decrypted private key) stored by acme_kvstore, at catalog-compile time.
 #

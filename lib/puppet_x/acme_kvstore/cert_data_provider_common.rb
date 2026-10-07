@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 require 'puppet_x'
-require 'puppet_x/acme_kvstore/cert_lookup'
+require_relative 'cert_lookup'
 
 module PuppetX::AcmeKvstore
   # acme_kvstore_cert_data providers: one CertLookup per resource, cached

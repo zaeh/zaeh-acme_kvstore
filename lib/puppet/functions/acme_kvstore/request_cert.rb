@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 
-require 'puppet_x/acme_kvstore/acmesh'
+require_relative '../../../puppet_x/acme_kvstore/acmesh'
 
 # @summary Requests a certificate via acme.sh directly, without storing it in the KV store.
 #

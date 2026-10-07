@@ -4,8 +4,7 @@ require 'puppet_x'
 begin
   require 'redis'
 rescue LoadError
-  # Only needed where Redis is actually used (installed by
-  # acme_kvstore::worker); #initialize raises a clear error otherwise.
+  # Only needed where Redis is actually used; see .load_gem.
 end
 require 'json'
 require 'openssl'
@@ -17,8 +16,19 @@ module PuppetX::AcmeKvstore
     class Error < StandardError; end
     class CasConflictError < Error; end
 
+    # acme_kvstore::worker may install the gem in the same Puppet run, after
+    # this file was loaded; RubyGems only sees it after clearing its paths.
+    def self.load_gem
+      return if defined?(::Redis)
+
+      Gem.clear_paths
+      require 'redis'
+    rescue LoadError
+      raise Error, "the 'redis' gem is not installed on this host"
+    end
+
     def initialize(config)
-      raise Error, "the 'redis' gem is not installed on this host" unless defined?(::Redis)
+      self.class.load_gem
 
       config = stringify_keys(config || {})
       opts = {
