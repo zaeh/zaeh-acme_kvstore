@@ -2,7 +2,8 @@
 
 Contributions are welcome - bug reports, documentation and code. For
 security problems, please follow [SECURITY.md](SECURITY.md) instead of
-opening an issue.
+opening an issue. Everyone taking part is expected to follow the
+[Code of Conduct](CODE_OF_CONDUCT.md).
 
 ## Before you start
 
