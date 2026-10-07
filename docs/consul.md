@@ -83,6 +83,13 @@ their `backend_config`. Consul's `read` also covers the recursive read of
 issued by this module (see
 [architecture.md](architecture.md#issuer-entries)).
 
+Note that Consul does not reject reads outside a token's policy: in a
+transaction it simply returns nothing for such keys, as if they did not
+exist (writes are rejected). A wrong or too narrow token therefore shows up
+as "no certificate", not as a permission error - check the token's policy
+first when a certificate seems to be missing. The acceptance tests
+(`bundle exec rake acceptance`) verify both.
+
 ## KV layout in Consul
 
 ```text

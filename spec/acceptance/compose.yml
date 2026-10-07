@@ -1,0 +1,37 @@
+---
+# Services for the acceptance tests (bundle exec rake acceptance). All
+# credentials here are throwaway test values, never real secrets.
+name: acme_kvstore_acceptance
+
+services:
+  consul:
+    image: hashicorp/consul:1.22.7
+    command: [agent, -dev, -client, 0.0.0.0]
+    environment:
+      CONSUL_LOCAL_CONFIG: >-
+        {"acl": {"enabled": true, "default_policy": "deny",
+        "tokens": {"initial_management": "acceptance-test-management-token"}}}
+    ports:
+      - 127.0.0.1:18500:8500
+    healthcheck:
+      test: [CMD, consul, info, -token=acceptance-test-management-token]
+      interval: 2s
+      retries: 30
+
+  redis:
+    image: redis:7.4.11
+    ports:
+      - 127.0.0.1:16379:6379
+    healthcheck:
+      test: [CMD, redis-cli, ping]
+      interval: 2s
+      retries: 30
+
+  pebble:
+    image: ghcr.io/letsencrypt/pebble:2.10.1
+    environment:
+      PEBBLE_VA_ALWAYS_VALID: '1'
+      PEBBLE_VA_NOSLEEP: '1'
+    ports:
+      - 127.0.0.1:14000:14000
+      - 127.0.0.1:15000:15000
