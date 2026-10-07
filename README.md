@@ -25,7 +25,7 @@ before 1.0.0.
 
 ## Requirements
 
-- Puppet or OpenVox 8 or 9, on Linux (RedHat, Debian, Ubuntu - see
+- Puppet or OpenVox 8 or 9, on Linux (RedHat, Rocky, Debian, Ubuntu - see
   `metadata.json`)
 - a **Consul** cluster (KV with ACLs) or **Redis** (6+, ACL users; a sharded
   Redis Cluster is not supported), reachable
