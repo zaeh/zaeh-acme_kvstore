@@ -93,6 +93,15 @@ describe PuppetX::AcmeKvstore::Acmesh do
       expect(calls.first[:args]).to include('--issue')
     end
 
+    it 'always forces the issuance (the module decides when, not acme.sh)' do
+      calls = []
+      stub_popen3(calls)
+
+      described_class.issue_or_renew(**base_args)
+
+      expect(calls.first[:args].drop(1).first(4)).to eq([base_args[:acmesh_path], '--issue', '--force', '--server'])
+    end
+
     it 'registers the account before issuing when account_email is given' do
       calls = []
       stub_popen3(calls)

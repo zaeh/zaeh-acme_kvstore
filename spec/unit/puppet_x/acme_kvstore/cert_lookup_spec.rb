@@ -180,6 +180,17 @@ describe PuppetX::AcmeKvstore::CertLookup do
       expect(described_class.lookup(**base_args, include_chain: true)[:chain]).to eq(intermediate.to_pem)
     end
 
+    it 'skips documents that hold no readable certificate' do
+      stub_meta(active_meta)
+      expect_cert_read
+      expect(kv_client).to receive(:read_prefix).and_return(
+        'acme/web/certs/broken/1' => { 'pem' => 'not a certificate' }, 'acme/web/certs/other/1' => { 'note' => 'no pem' },
+        'acme/web/certs/c/1' => cert_doc(intermediate)
+      )
+
+      expect(described_class.lookup(**base_args, include_chain: true)).to include(chain: intermediate.to_pem, chain_error: nil)
+    end
+
     it 'rejects a certificate that only shares the issuer name (different key, or no CA)' do
       stub_meta(active_meta)
       expect_cert_read
