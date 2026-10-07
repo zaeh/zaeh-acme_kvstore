@@ -326,7 +326,7 @@ warns. OpenVox 9 is deliberately not covered there (build time); its server JRub
 
 ## metadata.json conventions
 
-- `metadata.json` is the source of truth for the supported OS matrix (RedHat, Debian, Ubuntu); `on_supported_os` in specs derives from it. Update it when adding/removing platform support.
+- `metadata.json` is the source of truth for the supported OS matrix (RedHat, Rocky, Debian, Ubuntu); `on_supported_os` in specs derives from it. Update it when adding/removing platform support.
 - Bump `version` per [SemVer](https://semver.org): breaking change -> major, feature -> minor, fix -> patch.
 - `requirements` allows Puppet 8 and 9 (`>= 8.0.0 < 10.0.0`); keep code and specs in step with both lanes.
 - `license` is `AGPL-3.0-only` (SPDX), matching the verbatim GNU text in `LICENSE`.
