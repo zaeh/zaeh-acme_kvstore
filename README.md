@@ -19,8 +19,9 @@ Version 0.1.0, **in development** and not yet used in production. The unit
 tests cover Puppet/OpenVox 8 and OpenVox 9, the lookup code is checked under
 the Puppet server's JRuby, and acceptance tests issue certificates with
 acme.sh against Pebble (Let's Encrypt's test CA) into real Consul and Redis,
-including their ACLs. A full Puppet agent run is not covered yet. Expect
-changes before 1.0.0.
+including their ACLs. End-to-end tests run a real OpenVox 8 server with an
+ACME worker and a consumer node (Ubuntu 24.04 and Rocky 9). Expect changes
+before 1.0.0.
 
 ## Requirements
 
