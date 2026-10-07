@@ -101,4 +101,6 @@ jobs:
       - name: OpenVox server, ACME worker and consumer (containers)
         env:
           E2E_OS: ${{ matrix.os.id }}
+          # archive.ubuntu.com is slow from GitHub's runners; they run in Azure.
+          E2E_UBUNTU_MIRROR: http://azure.archive.ubuntu.com/ubuntu/
         run: bundle exec rake acceptance:e2e

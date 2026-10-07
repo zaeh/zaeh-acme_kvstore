@@ -119,7 +119,10 @@ needs fresh containers (the helper creates ACL policies/users once). Pebble's de
 End-to-end tests (`spec/acceptance/e2e/`, compose profile `e2e`, `bundle exec rake acceptance:e2e`,
 agent OS via `E2E_OS=ubuntu24.04|rocky9`) add an OpenVox 8 server (official image plus the `redis`
 gem in its JRuby), an ACME worker and a consumer node (images built from the Vox Pupuli packages,
-Pebble's TLS CA in the system trust store). The helper writes `site.pp` and Hiera data with the
+Pebble's TLS CA in the system trust store). `archive.ubuntu.com` can be extremely slow (minutes per
+`apt-get update`), so the Ubuntu image takes its mirror from `E2E_UBUNTU_MIRROR`; CI uses
+`azure.archive.ubuntu.com`, next to GitHub's runners. The fixture mounts refuse to start without
+`spec_prep` instead of letting Docker create empty root-owned directories. The helper writes `site.pp` and Hiera data with the
 per-run credentials into the server and runs `puppet agent --test`, checking issuance as a dedicated
 user, deployment, renewal, `status` gating, idempotence (exit 0 on the second run) and that no run
 warns. OpenVox 9 is deliberately not covered there (build time); its server JRuby is checked only by
