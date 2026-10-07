@@ -1,0 +1,30 @@
+---
+acme_kvstore::consul:
+  datacenter: 'dc2'
+acme_kvstore::areas:
+  internal:
+    secret: 'IIIIIIIIIIIIIIIIIIIIIIIIIIIIIIII'
+    consul_token: 'internal-area-token'
+    redis_username: 'acme-internal'
+    redis_password: 'internal-password'
+    consul_read_token: 'internal-read-token'
+    redis_read_username: 'acme-internal-read'
+    redis_read_password: 'internal-read-password'
+  # only the worker's (read/write) credentials, no read-only ones
+  workeronly:
+    secret: 'WWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWW'
+    consul_token: 'workeronly-area-token'
+    redis_username: 'acme-workeronly'
+    redis_password: 'workeronly-password'
+acme_kvstore::dns_profiles:
+  route53:
+    hook: 'dns_aws'
+acme_kvstore::ca_profiles:
+  zerossl:
+    account_email: 'ssl@example.com'
+acme_kvstore::certificates:
+  wildcard-example-com:
+    domain: '*.example.com'
+    subject_alt_names:
+      - 'example.com'
+    use_dns_profile: 'route53'

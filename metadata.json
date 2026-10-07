@@ -1,0 +1,65 @@
+{
+  "name": "zaeh-acme_kvstore",
+  "version": "0.1.0",
+  "author": "Sascha Ehrkamp",
+  "summary": "ACME certificate management without exported resources - storage in Consul or Redis.",
+  "license": "AGPL-3.0-only",
+  "source": "https://github.com/zaeh/zaeh-acme_kvstore",
+  "project_page": "https://github.com/zaeh/zaeh-acme_kvstore",
+  "issues_url": "https://github.com/zaeh/zaeh-acme_kvstore/issues",
+  "dependencies": [
+    {
+      "name": "puppetlabs/stdlib",
+      "version_requirement": ">= 6.0.0 < 11.0.0"
+    },
+    {
+      "name": "puppetlabs/vcsrepo",
+      "version_requirement": ">= 5.0.0 < 9.0.0"
+    }
+  ],
+  "operatingsystem_support": [
+    {
+      "operatingsystem": "RedHat",
+      "operatingsystemrelease": [
+        "8",
+        "9",
+        "10"
+      ]
+    },
+    {
+      "operatingsystem": "Debian",
+      "operatingsystemrelease": [
+        "11",
+        "12",
+        "13"
+      ]
+    },
+    {
+      "operatingsystem": "Ubuntu",
+      "operatingsystemrelease": [
+        "20.04",
+        "22.04",
+        "24.04",
+        "26.04"
+      ]
+    }
+  ],
+  "requirements": [
+    {
+      "name": "puppet",
+      "version_requirement": ">= 8.0.0 < 10.0.0"
+    }
+  ],
+  "tags": [
+    "acme",
+    "letsencrypt",
+    "consul",
+    "redis",
+    "tls",
+    "acme.sh",
+    "cas"
+  ],
+  "pdk-version": "3.8.0",
+  "template-url": "https://github.com/puppetlabs/pdk-templates#3.8.0",
+  "template-ref": "tags/3.8.0-0-gf1124a6"
+}

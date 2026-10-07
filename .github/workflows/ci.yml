@@ -1,0 +1,66 @@
+---
+# Lint and unit tests on every push to main and every pull request.
+# Actions are pinned to commit SHAs (Dependabot keeps them current); the
+# token is read-only. JRuby checks (rake jruby:compat) are not part of CI.
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  static:
+    name: Static checks
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: ruby/setup-ruby@14594264cd68ce8a2345dd349bc3d138a4ef85c8 # v1.327.0
+        with:
+          ruby-version: '3.2'
+          bundler-cache: true
+      - name: Syntax, puppet-lint, RuboCop, metadata
+        run: bundle exec rake validate lint rubocop metadata_lint
+      - name: REFERENCE.md is current and builds without warnings
+        run: |
+          bundle exec puppet strings generate --format markdown --out REFERENCE.md 2>&1 | tee "$RUNNER_TEMP/strings.log"
+          if grep -qE '^\[(warn|error)\]' "$RUNNER_TEMP/strings.log"; then echo '::error::puppet strings reported warnings'; exit 1; fi
+          git diff --exit-code REFERENCE.md || { echo '::error file=REFERENCE.md::out of date - run: bundle exec puppet strings generate --format markdown --out REFERENCE.md'; exit 1; }
+
+  unit:
+    name: Unit tests (${{ matrix.name }})
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: OpenVox 8 / Ruby 3.2
+            ruby: '3.2'
+            openvox: ''
+          - name: OpenVox 9 / Ruby 4.0
+            ruby: '4.0'
+            openvox: '~> 9.0'
+    env:
+      OPENVOX_GEM_VERSION: ${{ matrix.openvox }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: ruby/setup-ruby@14594264cd68ce8a2345dd349bc3d138a4ef85c8 # v1.327.0
+        with:
+          ruby-version: ${{ matrix.ruby }}
+          bundler-cache: true
+      - name: rspec-puppet and unit specs
+        run: bundle exec rake spec

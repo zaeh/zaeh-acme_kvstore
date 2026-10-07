@@ -1,0 +1,6 @@
+<%- | String[1] $key_name, String[1] $algorithm, String[1] $secret | -%>
+# Managed by Puppet (acme_kvstore::worker): TSIG key for acme.sh's dns_nsupdate hook.
+key "<%= $key_name %>" {
+  algorithm <%= $algorithm %>;
+  secret "<%= $secret %>";
+};

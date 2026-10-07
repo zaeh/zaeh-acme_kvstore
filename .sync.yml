@@ -1,0 +1,33 @@
+# This file can be used to customise the files managed by PDK.
+#
+# See https://github.com/puppetlabs/pdk-templates/blob/main/README.md
+# and that repository's config_defaults.yml for the available options.
+#
+# This module deliberately diverges from PDK's raw Gemfile/Rakefile/
+# spec_helper.rb/.rubocop.yml defaults in favour of Voxpupuli's
+# `voxpupuli-test` gem (see CLAUDE.md's "Gemfile, gem sources and version
+# pinning" section). Those files are therefore marked `unmanaged: true`
+# below, so `pdk convert`/`pdk update` leave them alone while the module
+# still stays PDK-compatible (`pdk validate`, `pdk test unit`, `pdk build`).
+---
+.rubocop.yml:
+  unmanaged: true
+Gemfile:
+  unmanaged: true
+Rakefile:
+  unmanaged: true
+.gitignore:
+  unmanaged: true
+spec/spec_helper.rb:
+  unmanaged: true
+# The networking.ip placeholder lives in spec/spec_helper_local.rb instead
+# (see the comment in both files).
+spec/default_facts.yml:
+  unmanaged: true
+# CI is the module's own .github/workflows/ci.yml (unmanaged by PDK's
+# defaults); PDK's puppetlabs-specific fork label guard is not wanted.
+.github/workflows/fork_ci_label_guard.yml:
+  unmanaged: true
+# PDK's template targets puppetlabs' own workflow (MODULES-* Jira tickets).
+.github/PULL_REQUEST_TEMPLATE.md:
+  unmanaged: true

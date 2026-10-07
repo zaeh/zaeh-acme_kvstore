@@ -1,0 +1,66 @@
+# Voxpupuli's RuboCop configuration (via voxpupuli-test) plus the few
+# module-specific exceptions below, each with its reason.
+inherit_from: .rubocop_todo.yml
+
+inherit_gem:
+  voxpupuli-test: rubocop.yml
+
+# Voxpupuli only includes **/*.rb; also check Gemfile/Rakefile/rakelib (as editors do).
+inherit_mode:
+  merge:
+    - Include
+
+AllCops:
+  # The floor, not the ceiling: the code must also run on Ruby 4.0 (Puppet 9).
+  TargetRubyVersion: 3.2
+  Include:
+    - 'Gemfile'
+    - 'Rakefile'
+    - 'rakelib/*.rake'
+  NewCops: enable
+  Exclude:
+    - 'bin/**/*' # binstubs created by PDK
+    - 'vendor/**/*'
+    - 'pkg/**/*'
+    - 'spec/fixtures/**/*'
+
+# Matches puppet-lint's limit.
+Layout/LineLength:
+  Max: 140
+
+# Would require comments on every one-line exception class.
+Style/Documentation:
+  Enabled: false
+
+# `has_key` mirrors the field name in the stored JSON documents.
+Naming/PredicatePrefix:
+  Enabled: false
+
+# Providers keep their related methods together.
+Metrics/ClassLength:
+  Max: 150
+  Exclude:
+    - 'spec/**/*'
+
+Metrics/ModuleLength:
+  Max: 150
+
+Metrics/BlockLength:
+  Exclude:
+    - 'spec/**/*'
+    - '*.gemspec'
+
+RSpec/MultipleExpectations:
+  Max: 6
+
+RSpec/ExampleLength:
+  Max: 15
+
+# The specs deliberately use `expect(x).to receive(:y).with(...)`: it fails
+# on wrong arguments, which a looser allow/have_received spy would not
+# catch. See CLAUDE.md, "Testing conventions".
+RSpec/StubbedMock:
+  Enabled: false
+
+RSpec/MessageSpies:
+  Enabled: false

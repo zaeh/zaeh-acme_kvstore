@@ -1,0 +1,12 @@
+---
+# Test-only Hiera setup (spec/classes/init_spec.rb): two levels, to verify
+# the module's lookup_options deep-merge hash parameters across levels.
+version: 5
+defaults:
+  datadir: data
+  data_hash: yaml_data
+hierarchy:
+  - name: 'node'
+    path: 'node.yaml'
+  - name: 'common'
+    path: 'common.yaml'

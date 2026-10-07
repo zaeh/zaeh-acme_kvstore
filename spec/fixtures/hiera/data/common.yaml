@@ -1,0 +1,16 @@
+---
+acme_kvstore::consul:
+  url: 'https://consul.example.com:8501'
+acme_kvstore::areas:
+  web:
+    secret: 'SSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSS'
+    consul_token: 'web-area-token'
+    consul_read_token: 'web-read-token'
+acme_kvstore::dns_profiles:
+  cloudflare:
+    hook: 'dns_cf'
+acme_kvstore::default_worker: 'worker1.example.com'
+acme_kvstore::default_area: 'web'
+acme_kvstore::certificates:
+  shop-example-com:
+    domain: 'shop.example.com'

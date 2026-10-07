@@ -1,0 +1,9 @@
+# NOTE: nothing currently reads this file. spec/spec_helper.rb uses
+# voxpupuli-test's spec_helper, which does not load a default_facts.yml
+# by this name; the actual default-fact override for this module (the
+# networking.ip placeholder, to silence a harmless Puppet warning) lives
+# in spec/spec_helper_local.rb via RspecPuppetFacts.add_custom_fact
+# instead. Kept here only as a conventional, empty placeholder in case a
+# future PDK/Voxpupuli tooling change starts reading it again. It must
+# still be a (here: empty) YAML hash, or `pdk validate` rejects it.
+--- {}

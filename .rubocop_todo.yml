@@ -1,0 +1,14 @@
+# This file is intentionally empty: as of the last manual review, this
+# module has no outstanding RuboCop offenses to grandfather in.
+#
+# If a future `voxpupuli-rubocop`/RuboCop gem update starts flagging
+# pre-existing code that isn't worth fixing immediately, regenerate this
+# file with:
+#
+#   bundle exec rubocop --auto-gen-config
+#
+# .rubocop.yml's `inherit_from: .rubocop_todo.yml` picks it up
+# automatically. Prefer fixing the underlying offense, or a scoped
+# `# rubocop:disable`/`enable` pair with a one-line justification right at
+# the offending code (see lib/puppet_x/acme_kvstore/provider_common.rb for
+# examples), over leaving a broad exemption here for longer than necessary.
