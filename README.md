@@ -145,8 +145,9 @@ only controls distribution: `active` is delivered by `acme_kvstore::deploy`,
 
 ## Contributing and security
 
-See [CONTRIBUTING.md](CONTRIBUTING.md) for how to test and contribute, and
-[SECURITY.md](SECURITY.md) for reporting vulnerabilities privately.
+See [CONTRIBUTING.md](CONTRIBUTING.md) for how to test and contribute,
+[SECURITY.md](SECURITY.md) for reporting vulnerabilities privately, and the
+[Code of Conduct](CODE_OF_CONDUCT.md).
 
 ## Licence
 

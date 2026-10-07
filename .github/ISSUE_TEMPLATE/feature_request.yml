@@ -1,0 +1,23 @@
+---
+name: Feature request
+description: Suggest an improvement or a new feature.
+labels: [enhancement]
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem or use case
+      description: What do you want to achieve, and what is missing today?
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposed solution
+      description: >-
+        Note that the KV storage format is shared with CCI-UI and can only be
+        extended by new fields, not changed (see docs/cci-ui.md).
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives considered

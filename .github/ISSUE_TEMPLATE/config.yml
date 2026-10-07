@@ -1,0 +1,9 @@
+---
+blank_issues_enabled: false
+contact_links:
+  - name: Report a security vulnerability
+    url: https://github.com/zaeh/zaeh-acme_kvstore/security/advisories/new
+    about: Please report vulnerabilities privately, not as an issue (see SECURITY.md).
+  - name: Documentation
+    url: https://github.com/zaeh/zaeh-acme_kvstore/tree/main/docs
+    about: Architecture, configuration, profiles, backends and deployment.
