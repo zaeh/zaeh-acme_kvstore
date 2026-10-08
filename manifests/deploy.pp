@@ -15,43 +15,50 @@
 # @param chain_path Where to write the issuer chain, without self-signed roots (skipped with a warning if the issuer is not stored).
 # @param fullchain_path Where to write certificate + chain (skipped with a warning if the issuer is not stored).
 # @param combined_path Where to write certificate + chain + key (e.g. for HAProxy), with key_mode.
-# @param combined_include_dh Whether to append the DH parameters to combined_path.
+# @param dh_path Where to write the DH parameters (RFC 7919 group).
 # @param chain_include_root
 #   Whether to append the self-signed root to chain_path, fullchain_path and
 #   combined_path, for applications without a usable trust store. The root
 #   must be stored in the area (CAs rarely deliver it; import it e.g. in CCI-UI).
-# @param dh_path Where to write the DH parameters (RFC 7919 group).
+# @param combined_include_dh Whether to append the DH parameters to combined_path.
 # @param dh_param_size DH parameter size: 2048, 3072 or 4096.
-# @param certid Certificate ID.
-# @param area Area of the certificate.
-# @param area_secret The area's secret; only needed to write a key.
-# @param backend KV backend.
-# @param backend_config Connection details including 'prefix' and credentials; used as given.
 # @param owner Owner of all files.
 # @param group Group of all files.
 # @param cert_mode Mode of files without the private key.
 # @param key_mode Mode of key_path and combined_path.
 # @param notify_services Services to notify when a file changes.
+# @param certid Certificate ID.
+# @param area Area of the certificate.
+# @param area_secret The area's secret; only needed to write a key.
+# @param backend KV backend.
+# @param backend_config Connection details including 'prefix' and credentials; used as given.
 define acme_kvstore::deploy (
-  Stdlib::Absolutepath $cert_path,
-  Optional[Stdlib::Absolutepath] $key_path = undef,
-  Optional[Stdlib::Absolutepath] $chain_path = undef,
-  Optional[Stdlib::Absolutepath] $fullchain_path = undef,
-  Optional[Stdlib::Absolutepath] $combined_path = undef,
-  Boolean $combined_include_dh = false,
-  Boolean $chain_include_root = false,
-  Optional[Stdlib::Absolutepath] $dh_path = undef,
-  Optional[Acme_kvstore::Dh_param_size] $dh_param_size = undef,
-  Acme_kvstore::Certid $certid = $title,
-  Optional[Acme_kvstore::Area_name] $area = undef,
-  Optional[Acme_kvstore::Secret] $area_secret = undef,
-  Optional[Enum['consul', 'redis']] $backend = undef,
-  Optional[Hash] $backend_config = undef,
-  String[1] $owner = 'root',
-  String[1] $group = 'root',
-  Stdlib::Filemode $cert_mode = '0644',
-  Stdlib::Filemode $key_mode = '0600',
-  Array[String[1]] $notify_services = [],
+  # Files to write
+  Stdlib::Absolutepath                  $cert_path,
+  Optional[Stdlib::Absolutepath]        $key_path            = undef,
+  Optional[Stdlib::Absolutepath]        $chain_path          = undef,
+  Optional[Stdlib::Absolutepath]        $fullchain_path      = undef,
+  Optional[Stdlib::Absolutepath]        $combined_path       = undef,
+  Optional[Stdlib::Absolutepath]        $dh_path             = undef,
+
+  # File contents
+  Boolean                               $chain_include_root  = false,
+  Boolean                               $combined_include_dh = false,
+  Optional[Acme_kvstore::Dh_param_size] $dh_param_size       = undef,
+
+  # Ownership and notification
+  String[1]                             $owner               = 'root',
+  String[1]                             $group               = 'root',
+  Stdlib::Filemode                      $cert_mode           = '0644',
+  Stdlib::Filemode                      $key_mode            = '0600',
+  Array[String[1]]                      $notify_services     = [],
+
+  # Source (undef: the acme_kvstore::* Hiera keys)
+  Acme_kvstore::Certid                  $certid              = $title,
+  Optional[Acme_kvstore::Area_name]     $area                = undef,
+  Optional[Acme_kvstore::Secret]        $area_secret         = undef,
+  Optional[Enum['consul', 'redis']]     $backend             = undef,
+  Optional[Hash]                        $backend_config      = undef,
 ) {
   # Deliberately no `include acme_kvstore` - see the description above.
   $real_area = $area ? {

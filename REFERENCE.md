@@ -57,22 +57,22 @@ of most parameters: data/common.yaml. See docs/configuration.md.
 
 The following parameters are available in the `acme_kvstore` class:
 
-* [`prefix`](#-acme_kvstore--prefix)
 * [`backend`](#-acme_kvstore--backend)
-* [`workers`](#-acme_kvstore--workers)
-* [`areas`](#-acme_kvstore--areas)
+* [`prefix`](#-acme_kvstore--prefix)
 * [`consul`](#-acme_kvstore--consul)
 * [`redis`](#-acme_kvstore--redis)
+* [`areas`](#-acme_kvstore--areas)
+* [`workers`](#-acme_kvstore--workers)
 * [`dns_profiles`](#-acme_kvstore--dns_profiles)
 * [`dnsapi_scripts`](#-acme_kvstore--dnsapi_scripts)
 * [`ca_profiles`](#-acme_kvstore--ca_profiles)
-* [`default_ca_profile`](#-acme_kvstore--default_ca_profile)
 * [`ca_whitelist`](#-acme_kvstore--ca_whitelist)
-* [`exec_timeout`](#-acme_kvstore--exec_timeout)
+* [`default_ca_profile`](#-acme_kvstore--default_ca_profile)
 * [`renew_before_days`](#-acme_kvstore--renew_before_days)
 * [`purge_key_on_mismatch`](#-acme_kvstore--purge_key_on_mismatch)
 * [`store_issuers`](#-acme_kvstore--store_issuers)
 * [`dnssleep`](#-acme_kvstore--dnssleep)
+* [`exec_timeout`](#-acme_kvstore--exec_timeout)
 * [`dh_param_size`](#-acme_kvstore--dh_param_size)
 * [`kv_client`](#-acme_kvstore--kv_client)
 * [`certificates`](#-acme_kvstore--certificates)
@@ -84,14 +84,6 @@ The following parameters are available in the `acme_kvstore` class:
 * [`renew_schedule`](#-acme_kvstore--renew_schedule)
 * [`kv_updated_by`](#-acme_kvstore--kv_updated_by)
 
-##### <a name="-acme_kvstore--prefix"></a>`prefix`
-
-Data type: `String[1]`
-
-KV path prefix; all keys live below <prefix>/<area>/.
-
-Default value: `'acme'`
-
 ##### <a name="-acme_kvstore--backend"></a>`backend`
 
 Data type: `Enum['consul', 'redis']`
@@ -100,22 +92,13 @@ Default KV backend.
 
 Default value: `'consul'`
 
-##### <a name="-acme_kvstore--workers"></a>`workers`
+##### <a name="-acme_kvstore--prefix"></a>`prefix`
 
-Data type: `Hash[Stdlib::Fqdn, Hash]`
+Data type: `String[1]`
 
-Known worker hosts (informational only).
+KV path prefix; all keys live below <prefix>/<area>/.
 
-Default value: `{}`
-
-##### <a name="-acme_kvstore--areas"></a>`areas`
-
-Data type: `Hash[Acme_kvstore::Area_name, Acme_kvstore::Area]`
-
-Area name => secret and the area's own KV credentials (consul_token
-with Consul, redis_username/redis_password with Redis).
-
-Default value: `{}`
+Default value: `'acme'`
 
 ##### <a name="-acme_kvstore--consul"></a>`consul`
 
@@ -130,6 +113,23 @@ Default value: `{}`
 Data type: `Acme_kvstore::Redis_config`
 
 Redis connection details (no username/password, see $areas). See docs/redis.md.
+
+Default value: `{}`
+
+##### <a name="-acme_kvstore--areas"></a>`areas`
+
+Data type: `Hash[Acme_kvstore::Area_name, Acme_kvstore::Area]`
+
+Area name => secret and the area's own KV credentials (consul_token
+with Consul, redis_username/redis_password with Redis).
+
+Default value: `{}`
+
+##### <a name="-acme_kvstore--workers"></a>`workers`
+
+Data type: `Hash[Stdlib::Fqdn, Hash]`
+
+Known worker hosts (informational only).
 
 Default value: `{}`
 
@@ -158,14 +158,6 @@ CAs with their account data; includes 'letsencrypt' and 'letsencrypt_test'. See 
 
 Default value: `{ 'letsencrypt' => {}, 'letsencrypt_test' => {} }`
 
-##### <a name="-acme_kvstore--default_ca_profile"></a>`default_ca_profile`
-
-Data type: `String[1]`
-
-CA profile used when a certificate names none; must be whitelisted.
-
-Default value: `'letsencrypt'`
-
 ##### <a name="-acme_kvstore--ca_whitelist"></a>`ca_whitelist`
 
 Data type: `Array[String[1]]`
@@ -174,13 +166,13 @@ CA profiles certificates may actually use.
 
 Default value: `['letsencrypt', 'letsencrypt_test']`
 
-##### <a name="-acme_kvstore--exec_timeout"></a>`exec_timeout`
+##### <a name="-acme_kvstore--default_ca_profile"></a>`default_ca_profile`
 
-Data type: `Integer[1]`
+Data type: `String[1]`
 
-Default maximum run time of acme.sh in seconds; must exceed $dnssleep.
+CA profile used when a certificate names none; must be whitelisted.
 
-Default value: `300`
+Default value: `'letsencrypt'`
 
 ##### <a name="-acme_kvstore--renew_before_days"></a>`renew_before_days`
 
@@ -213,6 +205,14 @@ Data type: `Integer[1]`
 Default seconds to wait for DNS-01 records (acme.sh --dnssleep).
 
 Default value: `60`
+
+##### <a name="-acme_kvstore--exec_timeout"></a>`exec_timeout`
+
+Data type: `Integer[1]`
+
+Default maximum run time of acme.sh in seconds; must exceed $dnssleep.
+
+Default value: `300`
 
 ##### <a name="-acme_kvstore--dh_param_size"></a>`dh_param_size`
 
@@ -315,12 +315,12 @@ The following parameters are available in the `acme_kvstore::worker` class:
 * [`manage_user`](#-acme_kvstore--worker--manage_user)
 * [`user`](#-acme_kvstore--worker--user)
 * [`group`](#-acme_kvstore--worker--group)
-* [`home`](#-acme_kvstore--worker--home)
 * [`webroot`](#-acme_kvstore--worker--webroot)
+* [`config_dir`](#-acme_kvstore--worker--config_dir)
 * [`acme_log_file`](#-acme_kvstore--worker--acme_log_file)
 * [`acme_log_level`](#-acme_kvstore--worker--acme_log_level)
 * [`manage_log_dir`](#-acme_kvstore--worker--manage_log_dir)
-* [`config_dir`](#-acme_kvstore--worker--config_dir)
+* [`home`](#-acme_kvstore--worker--home)
 
 ##### <a name="-acme_kvstore--worker--install_method"></a>`install_method`
 
@@ -394,14 +394,6 @@ Group of user and owner group of home/webroot.
 
 Default value: `'root'`
 
-##### <a name="-acme_kvstore--worker--home"></a>`home`
-
-Data type: `Stdlib::Absolutepath`
-
-acme.sh home; derived from user by default.
-
-Default value: `$user ? { 'root' => '/root/.acme.sh', default => "/home/${user}/.acme.sh"`
-
 ##### <a name="-acme_kvstore--worker--webroot"></a>`webroot`
 
 Data type: `Stdlib::Absolutepath`
@@ -409,6 +401,14 @@ Data type: `Stdlib::Absolutepath`
 Webroot for HTTP-01.
 
 Default value: `'/var/www/acme-challenge'`
+
+##### <a name="-acme_kvstore--worker--config_dir"></a>`config_dir`
+
+Data type: `Stdlib::Absolutepath`
+
+Directory for generated files such as nsupdate TSIG keys.
+
+Default value: `'/etc/acme_kvstore'`
 
 ##### <a name="-acme_kvstore--worker--acme_log_file"></a>`acme_log_file`
 
@@ -434,13 +434,13 @@ Manage the log file's directory (false for shared ones like /var/log).
 
 Default value: `true`
 
-##### <a name="-acme_kvstore--worker--config_dir"></a>`config_dir`
+##### <a name="-acme_kvstore--worker--home"></a>`home`
 
 Data type: `Stdlib::Absolutepath`
 
-Directory for generated files such as nsupdate TSIG keys.
+acme.sh home; derived from user by default.
 
-Default value: `'/etc/acme_kvstore'`
+Default value: `$user ? { 'root' => '/root/.acme.sh', default => "/home/${user}/.acme.sh"`
 
 ## Defined types
 
@@ -456,13 +456,14 @@ The following parameters are available in the `acme_kvstore::certificate` define
 
 * [`domain`](#-acme_kvstore--certificate--domain)
 * [`subject_alt_names`](#-acme_kvstore--certificate--subject_alt_names)
-* [`area`](#-acme_kvstore--certificate--area)
 * [`certid`](#-acme_kvstore--certificate--certid)
+* [`area`](#-acme_kvstore--certificate--area)
 * [`worker`](#-acme_kvstore--certificate--worker)
 * [`backend`](#-acme_kvstore--certificate--backend)
 * [`key_type`](#-acme_kvstore--certificate--key_type)
 * [`key_size`](#-acme_kvstore--certificate--key_size)
 * [`renew_before_days`](#-acme_kvstore--certificate--renew_before_days)
+* [`renew_schedule`](#-acme_kvstore--certificate--renew_schedule)
 * [`purge_key_on_mismatch`](#-acme_kvstore--certificate--purge_key_on_mismatch)
 * [`store_issuers`](#-acme_kvstore--certificate--store_issuers)
 * [`tags`](#-acme_kvstore--certificate--tags)
@@ -474,10 +475,9 @@ The following parameters are available in the `acme_kvstore::certificate` define
 * [`domain_alias`](#-acme_kvstore--certificate--domain_alias)
 * [`dnssleep`](#-acme_kvstore--certificate--dnssleep)
 * [`use_ca_profile`](#-acme_kvstore--certificate--use_ca_profile)
-* [`posthook_cmd`](#-acme_kvstore--certificate--posthook_cmd)
 * [`proxy`](#-acme_kvstore--certificate--proxy)
 * [`exec_timeout`](#-acme_kvstore--certificate--exec_timeout)
-* [`renew_schedule`](#-acme_kvstore--certificate--renew_schedule)
+* [`posthook_cmd`](#-acme_kvstore--certificate--posthook_cmd)
 
 ##### <a name="-acme_kvstore--certificate--domain"></a>`domain`
 
@@ -493,14 +493,6 @@ Additional names on the certificate; a change forces a reissue.
 
 Default value: `[]`
 
-##### <a name="-acme_kvstore--certificate--area"></a>`area`
-
-Data type: `Optional[Acme_kvstore::Area_name]`
-
-Area (secret and KV namespace).
-
-Default value: `undef`
-
 ##### <a name="-acme_kvstore--certificate--certid"></a>`certid`
 
 Data type: `Acme_kvstore::Certid`
@@ -508,6 +500,14 @@ Data type: `Acme_kvstore::Certid`
 Certificate ID.
 
 Default value: `$title`
+
+##### <a name="-acme_kvstore--certificate--area"></a>`area`
+
+Data type: `Optional[Acme_kvstore::Area_name]`
+
+Area (secret and KV namespace).
+
+Default value: `undef`
 
 ##### <a name="-acme_kvstore--certificate--worker"></a>`worker`
 
@@ -548,6 +548,15 @@ Data type: `Integer[1]`
 Renew when fewer days than this remain.
 
 Default value: `$acme_kvstore::renew_before_days`
+
+##### <a name="-acme_kvstore--certificate--renew_schedule"></a>`renew_schedule`
+
+Data type: `Optional[String[1]]`
+
+Name of a 'schedule' resource whose range/weekday limit when a due
+renewal may run; first issuance is never delayed. undef: any time.
+
+Default value: `$acme_kvstore::renew_schedule`
 
 ##### <a name="-acme_kvstore--certificate--purge_key_on_mismatch"></a>`purge_key_on_mismatch`
 
@@ -637,14 +646,6 @@ CA profile; must be whitelisted.
 
 Default value: `$acme_kvstore::default_ca_profile`
 
-##### <a name="-acme_kvstore--certificate--posthook_cmd"></a>`posthook_cmd`
-
-Data type: `Optional[String[1]]`
-
-Command run on the worker after issuing.
-
-Default value: `$acme_kvstore::posthook_cmd`
-
 ##### <a name="-acme_kvstore--certificate--proxy"></a>`proxy`
 
 Data type: `Optional[String[1]]`
@@ -661,14 +662,13 @@ Maximum run time of acme.sh in seconds.
 
 Default value: `$acme_kvstore::exec_timeout`
 
-##### <a name="-acme_kvstore--certificate--renew_schedule"></a>`renew_schedule`
+##### <a name="-acme_kvstore--certificate--posthook_cmd"></a>`posthook_cmd`
 
 Data type: `Optional[String[1]]`
 
-Name of a 'schedule' resource whose range/weekday limit when a due
-renewal may run; first issuance is never delayed. undef: any time.
+Command run on the worker after issuing.
 
-Default value: `$acme_kvstore::renew_schedule`
+Default value: `$acme_kvstore::posthook_cmd`
 
 ### <a name="acme_kvstore--deploy"></a>`acme_kvstore::deploy`
 
@@ -691,20 +691,20 @@ The following parameters are available in the `acme_kvstore::deploy` defined typ
 * [`chain_path`](#-acme_kvstore--deploy--chain_path)
 * [`fullchain_path`](#-acme_kvstore--deploy--fullchain_path)
 * [`combined_path`](#-acme_kvstore--deploy--combined_path)
-* [`combined_include_dh`](#-acme_kvstore--deploy--combined_include_dh)
-* [`chain_include_root`](#-acme_kvstore--deploy--chain_include_root)
 * [`dh_path`](#-acme_kvstore--deploy--dh_path)
+* [`chain_include_root`](#-acme_kvstore--deploy--chain_include_root)
+* [`combined_include_dh`](#-acme_kvstore--deploy--combined_include_dh)
 * [`dh_param_size`](#-acme_kvstore--deploy--dh_param_size)
-* [`certid`](#-acme_kvstore--deploy--certid)
-* [`area`](#-acme_kvstore--deploy--area)
-* [`area_secret`](#-acme_kvstore--deploy--area_secret)
-* [`backend`](#-acme_kvstore--deploy--backend)
-* [`backend_config`](#-acme_kvstore--deploy--backend_config)
 * [`owner`](#-acme_kvstore--deploy--owner)
 * [`group`](#-acme_kvstore--deploy--group)
 * [`cert_mode`](#-acme_kvstore--deploy--cert_mode)
 * [`key_mode`](#-acme_kvstore--deploy--key_mode)
 * [`notify_services`](#-acme_kvstore--deploy--notify_services)
+* [`certid`](#-acme_kvstore--deploy--certid)
+* [`area`](#-acme_kvstore--deploy--area)
+* [`area_secret`](#-acme_kvstore--deploy--area_secret)
+* [`backend`](#-acme_kvstore--deploy--backend)
+* [`backend_config`](#-acme_kvstore--deploy--backend_config)
 
 ##### <a name="-acme_kvstore--deploy--cert_path"></a>`cert_path`
 
@@ -744,13 +744,13 @@ Where to write certificate + chain + key (e.g. for HAProxy), with key_mode.
 
 Default value: `undef`
 
-##### <a name="-acme_kvstore--deploy--combined_include_dh"></a>`combined_include_dh`
+##### <a name="-acme_kvstore--deploy--dh_path"></a>`dh_path`
 
-Data type: `Boolean`
+Data type: `Optional[Stdlib::Absolutepath]`
 
-Whether to append the DH parameters to combined_path.
+Where to write the DH parameters (RFC 7919 group).
 
-Default value: `false`
+Default value: `undef`
 
 ##### <a name="-acme_kvstore--deploy--chain_include_root"></a>`chain_include_root`
 
@@ -762,59 +762,19 @@ must be stored in the area (CAs rarely deliver it; import it e.g. in CCI-UI).
 
 Default value: `false`
 
-##### <a name="-acme_kvstore--deploy--dh_path"></a>`dh_path`
+##### <a name="-acme_kvstore--deploy--combined_include_dh"></a>`combined_include_dh`
 
-Data type: `Optional[Stdlib::Absolutepath]`
+Data type: `Boolean`
 
-Where to write the DH parameters (RFC 7919 group).
+Whether to append the DH parameters to combined_path.
 
-Default value: `undef`
+Default value: `false`
 
 ##### <a name="-acme_kvstore--deploy--dh_param_size"></a>`dh_param_size`
 
 Data type: `Optional[Acme_kvstore::Dh_param_size]`
 
 DH parameter size: 2048, 3072 or 4096.
-
-Default value: `undef`
-
-##### <a name="-acme_kvstore--deploy--certid"></a>`certid`
-
-Data type: `Acme_kvstore::Certid`
-
-Certificate ID.
-
-Default value: `$title`
-
-##### <a name="-acme_kvstore--deploy--area"></a>`area`
-
-Data type: `Optional[Acme_kvstore::Area_name]`
-
-Area of the certificate.
-
-Default value: `undef`
-
-##### <a name="-acme_kvstore--deploy--area_secret"></a>`area_secret`
-
-Data type: `Optional[Acme_kvstore::Secret]`
-
-The area's secret; only needed to write a key.
-
-Default value: `undef`
-
-##### <a name="-acme_kvstore--deploy--backend"></a>`backend`
-
-Data type: `Optional[Enum['consul', 'redis']]`
-
-KV backend.
-
-Default value: `undef`
-
-##### <a name="-acme_kvstore--deploy--backend_config"></a>`backend_config`
-
-Data type: `Optional[Hash]`
-
-Connection details including 'prefix' and credentials; used as given.
 
 Default value: `undef`
 
@@ -857,6 +817,46 @@ Data type: `Array[String[1]]`
 Services to notify when a file changes.
 
 Default value: `[]`
+
+##### <a name="-acme_kvstore--deploy--certid"></a>`certid`
+
+Data type: `Acme_kvstore::Certid`
+
+Certificate ID.
+
+Default value: `$title`
+
+##### <a name="-acme_kvstore--deploy--area"></a>`area`
+
+Data type: `Optional[Acme_kvstore::Area_name]`
+
+Area of the certificate.
+
+Default value: `undef`
+
+##### <a name="-acme_kvstore--deploy--area_secret"></a>`area_secret`
+
+Data type: `Optional[Acme_kvstore::Secret]`
+
+The area's secret; only needed to write a key.
+
+Default value: `undef`
+
+##### <a name="-acme_kvstore--deploy--backend"></a>`backend`
+
+Data type: `Optional[Enum['consul', 'redis']]`
+
+KV backend.
+
+Default value: `undef`
+
+##### <a name="-acme_kvstore--deploy--backend_config"></a>`backend_config`
+
+Data type: `Optional[Hash]`
+
+Connection details including 'prefix' and credentials; used as given.
+
+Default value: `undef`
 
 ## Resource types
 
