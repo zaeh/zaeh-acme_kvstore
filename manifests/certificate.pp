@@ -6,13 +6,16 @@
 #
 # @param domain Primary domain (the certificate's CN); a wildcard needs DNS-01. A change forces a reissue.
 # @param subject_alt_names Additional names on the certificate; a change forces a reissue.
-# @param area Area (secret and KV namespace).
 # @param certid Certificate ID.
+# @param area Area (secret and KV namespace).
 # @param worker FQDN of the responsible worker.
 # @param backend KV backend.
 # @param key_type Key algorithm.
 # @param key_size RSA bit length or EC curve (256/384).
 # @param renew_before_days Renew when fewer days than this remain.
+# @param renew_schedule
+#   Name of a 'schedule' resource whose range/weekday limit when a due
+#   renewal may run; first issuance is never delayed. undef: any time.
 # @param purge_key_on_mismatch Whether a changed key_type/key_size forces an immediate reissue.
 # @param store_issuers Whether the chain certificates acme.sh returns are stored as issuer entries.
 # @param tags Free-form tags stored with the certificate.
@@ -24,37 +27,47 @@
 # @param domain_alias DNS alias mode, overrides the profile.
 # @param dnssleep Seconds to wait for DNS-01 records; defaults to the profile's, then the class's.
 # @param use_ca_profile CA profile; must be whitelisted.
-# @param posthook_cmd Command run on the worker after issuing.
 # @param proxy HTTP(S) proxy for acme.sh.
 # @param exec_timeout Maximum run time of acme.sh in seconds.
-# @param renew_schedule
-#   Name of a 'schedule' resource whose range/weekday limit when a due
-#   renewal may run; first issuance is never delayed. undef: any time.
+# @param posthook_cmd Command run on the worker after issuing.
 define acme_kvstore::certificate (
-  Acme_kvstore::Domain $domain,
-  Array[Acme_kvstore::Domain] $subject_alt_names = [],
-  Optional[Acme_kvstore::Area_name] $area = undef,
-  Acme_kvstore::Certid $certid = $title,
-  Optional[Stdlib::Fqdn] $worker = undef,
-  Optional[Enum['consul', 'redis']] $backend = undef,
-  Enum['rsa', 'ec'] $key_type = 'rsa',
-  Integer[256] $key_size = 2048,
-  Integer[1] $renew_before_days = $acme_kvstore::renew_before_days,
-  Boolean $purge_key_on_mismatch = $acme_kvstore::purge_key_on_mismatch,
-  Boolean $store_issuers = $acme_kvstore::store_issuers,
-  Array[String[1]] $tags = [],
-  Optional[Enum['http-01', 'dns-01']] $challenge_type = undef,
-  Optional[String[1]] $use_dns_profile = undef,
-  Optional[Pattern[/\Adns_[a-z0-9_]+\z/]] $dns_provider = undef,
-  Hash[String[1], String[1]] $dns_env = {},
-  Optional[Stdlib::Fqdn] $challenge_alias = undef,
-  Optional[Stdlib::Fqdn] $domain_alias = undef,
-  Optional[Integer[1]] $dnssleep = undef,
-  String[1] $use_ca_profile = $acme_kvstore::default_ca_profile,
-  Optional[String[1]] $posthook_cmd = $acme_kvstore::posthook_cmd,
-  Optional[String[1]] $proxy = $acme_kvstore::proxy,
-  Integer[1] $exec_timeout = $acme_kvstore::exec_timeout,
-  Optional[String[1]] $renew_schedule = $acme_kvstore::renew_schedule,
+  # Names
+  Acme_kvstore::Domain                    $domain,
+  Array[Acme_kvstore::Domain]             $subject_alt_names     = [],
+
+  # Placement
+  Acme_kvstore::Certid                    $certid                = $title,
+  Optional[Acme_kvstore::Area_name]       $area                  = undef,
+  Optional[Stdlib::Fqdn]                  $worker                = undef,
+  Optional[Enum['consul', 'redis']]       $backend               = undef,
+
+  # Key
+  Enum['rsa', 'ec']                       $key_type              = 'rsa',
+  Integer[256]                            $key_size              = 2048,
+
+  # Renewal
+  Integer[1]                              $renew_before_days     = $acme_kvstore::renew_before_days,
+  Optional[String[1]]                     $renew_schedule        = $acme_kvstore::renew_schedule,
+  Boolean                                 $purge_key_on_mismatch = $acme_kvstore::purge_key_on_mismatch,
+
+  # Storage
+  Boolean                                 $store_issuers         = $acme_kvstore::store_issuers,
+  Array[String[1]]                        $tags                  = [],
+
+  # Challenge
+  Optional[Enum['http-01', 'dns-01']]     $challenge_type        = undef,
+  Optional[String[1]]                     $use_dns_profile       = undef,
+  Optional[Pattern[/\Adns_[a-z0-9_]+\z/]] $dns_provider          = undef,
+  Hash[String[1], String[1]]              $dns_env               = {},
+  Optional[Stdlib::Fqdn]                  $challenge_alias       = undef,
+  Optional[Stdlib::Fqdn]                  $domain_alias          = undef,
+  Optional[Integer[1]]                    $dnssleep              = undef,
+
+  # CA and acme.sh
+  String[1]                               $use_ca_profile        = $acme_kvstore::default_ca_profile,
+  Optional[String[1]]                     $proxy                 = $acme_kvstore::proxy,
+  Integer[1]                              $exec_timeout          = $acme_kvstore::exec_timeout,
+  Optional[String[1]]                     $posthook_cmd          = $acme_kvstore::posthook_cmd,
 ) {
   include acme_kvstore
 

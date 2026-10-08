@@ -322,6 +322,10 @@ warns. OpenVox 9 is deliberately not covered there (build time); its server JRub
   defaults and `acme_kvstore::worker::home` (derived from `user`) stay in code; puppet-lint then
   requires those parameters to come after all parameters without a default. A new class parameter
   needs its default added to `data/common.yaml`, or the class stops compiling.
+- **Parameter heads** of classes and defined types are grouped by topic, each group under a short
+  `# comment`, with the columns type, `$name` and `= default` aligned across the whole head; the
+  `@param` docs follow the same order. Within that, required parameters still come first
+  (puppet-lint `parameter_order`). Regenerate `REFERENCE.md` after reordering.
 - Use `$facts['networking']['fqdn']` and similar structured facts; never a legacy flat fact or
   `$::fact` top-scope syntax.
 

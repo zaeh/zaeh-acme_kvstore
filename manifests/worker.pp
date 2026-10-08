@@ -12,30 +12,35 @@
 # @param manage_user Create user/group (false: use an existing account).
 # @param user User acme.sh runs as (a non-root user is recommended).
 # @param group Group of user and owner group of home/webroot.
-# @param home acme.sh home; derived from user by default.
 # @param webroot Webroot for HTTP-01.
+# @param config_dir Directory for generated files such as nsupdate TSIG keys.
 # @param acme_log_file acme.sh log file, or false for none; not rotated.
 # @param acme_log_level acme.sh log level: 1 (normal) or 2 (debug).
 # @param manage_log_dir Manage the log file's directory (false for shared ones like /var/log).
-# @param config_dir Directory for generated files such as nsupdate TSIG keys.
+# @param home acme.sh home; derived from user by default.
 class acme_kvstore::worker (
-  Enum['git', 'package'] $install_method,
-  String[1] $acme_git_url,
-  Boolean $acme_git_force,
-  String[1] $acme_version,
-  Boolean $manage_packages,
-  Boolean $manage_gems,
-  Boolean $manage_user,
-  String[1] $user,
-  String[1] $group,
-  Stdlib::Absolutepath $webroot,
+  # Installation of acme.sh
+  Enum['git', 'package']                        $install_method,
+  String[1]                                     $acme_git_url,
+  Boolean                                       $acme_git_force,
+  String[1]                                     $acme_version,
+  Boolean                                       $manage_packages,
+  Boolean                                       $manage_gems,
+
+  # User and directories
+  Boolean                                       $manage_user,
+  String[1]                                     $user,
+  String[1]                                     $group,
+  Stdlib::Absolutepath                          $webroot,
+  Stdlib::Absolutepath                          $config_dir,
+
+  # Logging
   Variant[Stdlib::Absolutepath, Boolean[false]] $acme_log_file,
-  Integer[1, 2] $acme_log_level,
-  Boolean $manage_log_dir,
-  Stdlib::Absolutepath $config_dir,
-  # Depends on $user, which a static Hiera value cannot express - so this
-  # is the one default that stays here instead of in data/common.yaml.
-  Stdlib::Absolutepath $home = $user ? { 'root' => '/root/.acme.sh', default => "/home/${user}/.acme.sh" },
+  Integer[1, 2]                                 $acme_log_level,
+  Boolean                                       $manage_log_dir,
+
+  # Derived from $user, so its default stays here, not in data/common.yaml
+  Stdlib::Absolutepath                          $home = $user ? { 'root' => '/root/.acme.sh', default => "/home/${user}/.acme.sh" },
 ) {
   include acme_kvstore
 

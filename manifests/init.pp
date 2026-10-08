@@ -3,26 +3,26 @@
 # Requests no certificates itself, except those in $certificates. Defaults
 # of most parameters: data/common.yaml. See docs/configuration.md.
 #
-# @param prefix KV path prefix; all keys live below <prefix>/<area>/.
 # @param backend Default KV backend.
-# @param workers Known worker hosts (informational only).
+# @param prefix KV path prefix; all keys live below <prefix>/<area>/.
+# @param consul Consul connection details (no token, see $areas). See docs/consul.md.
+# @param redis Redis connection details (no username/password, see $areas). See docs/redis.md.
 # @param areas
 #   Area name => secret and the area's own KV credentials (consul_token
 #   with Consul, redis_username/redis_password with Redis).
-# @param consul Consul connection details (no token, see $areas). See docs/consul.md.
-# @param redis Redis connection details (no username/password, see $areas). See docs/redis.md.
+# @param workers Known worker hosts (informational only).
 # @param dns_profiles DNS-01 configurations (hook, credentials, options, alias mode). See docs/profiles.md.
 # @param dnsapi_scripts
 #   Hook name (dns_...) => custom acme.sh DNS API script, installed on the
 #   workers; DNS profiles use it via their hook. See docs/profiles.md.
 # @param ca_profiles CAs with their account data; includes 'letsencrypt' and 'letsencrypt_test'. See docs/profiles.md.
-# @param default_ca_profile CA profile used when a certificate names none; must be whitelisted.
 # @param ca_whitelist CA profiles certificates may actually use.
-# @param exec_timeout Default maximum run time of acme.sh in seconds; must exceed $dnssleep.
+# @param default_ca_profile CA profile used when a certificate names none; must be whitelisted.
 # @param renew_before_days Default: renew when fewer days than this remain.
 # @param purge_key_on_mismatch Default: whether a changed key_type/key_size forces an immediate reissue.
 # @param store_issuers Default: whether the chain certificates acme.sh returns are stored as issuer entries.
 # @param dnssleep Default seconds to wait for DNS-01 records (acme.sh --dnssleep).
+# @param exec_timeout Default maximum run time of acme.sh in seconds; must exceed $dnssleep.
 # @param dh_param_size Default size of the DH parameters written by acme_kvstore::deploy.
 # @param kv_client Value of the 'client' field in the KV documents the workers write.
 # @param certificates
@@ -40,32 +40,45 @@
 #   Value of the 'updated_by'/'created_by' fields in the KV documents;
 #   undef: the FQDN of the writing worker.
 class acme_kvstore (
-  String[1] $prefix,
-  Enum['consul', 'redis'] $backend,
-  Hash[Stdlib::Fqdn, Hash] $workers,
-  Hash[Acme_kvstore::Area_name, Acme_kvstore::Area] $areas,
-  Acme_kvstore::Consul_config $consul,
-  Acme_kvstore::Redis_config $redis,
-  Hash[String[1], Acme_kvstore::Dns_profile] $dns_profiles,
+  # KV store
+  Enum['consul', 'redis']                                          $backend,
+  String[1]                                                        $prefix,
+  Acme_kvstore::Consul_config                                      $consul,
+  Acme_kvstore::Redis_config                                       $redis,
+  Hash[Acme_kvstore::Area_name, Acme_kvstore::Area]                $areas,
+
+  # Workers
+  Hash[Stdlib::Fqdn, Hash]                                         $workers,
+
+  # DNS and CA profiles
+  Hash[String[1], Acme_kvstore::Dns_profile]                       $dns_profiles,
   Hash[Pattern[/\Adns_[a-z0-9_]+\z/], Acme_kvstore::Dnsapi_script] $dnsapi_scripts,
-  Hash[String[1], Acme_kvstore::Ca_profile] $ca_profiles,
-  String[1] $default_ca_profile,
-  Array[String[1]] $ca_whitelist,
-  Integer[1] $exec_timeout,
-  Integer[1] $renew_before_days,
-  Boolean $purge_key_on_mismatch,
-  Boolean $store_issuers,
-  Integer[1] $dnssleep,
-  Acme_kvstore::Dh_param_size $dh_param_size,
-  Pattern[/\A[a-zA-Z0-9_.-]{1,120}\z/] $kv_client,
-  Hash[Acme_kvstore::Certid, Acme_kvstore::Certificate_params] $certificates,
-  Optional[Stdlib::Fqdn] $default_worker = undef,
-  Optional[Acme_kvstore::Area_name] $default_area = undef,
-  Optional[String[1]] $default_dns_profile = undef,
-  Optional[String[1]] $posthook_cmd = undef,
-  Optional[String[1]] $proxy = undef,
-  Optional[String[1]] $renew_schedule = undef,
-  Optional[String[1, 255]] $kv_updated_by = undef,
+  Hash[String[1], Acme_kvstore::Ca_profile]                        $ca_profiles,
+  Array[String[1]]                                                 $ca_whitelist,
+  String[1]                                                        $default_ca_profile,
+
+  # Defaults of the certificates
+  Integer[1]                                                       $renew_before_days,
+  Boolean                                                          $purge_key_on_mismatch,
+  Boolean                                                          $store_issuers,
+  Integer[1]                                                       $dnssleep,
+  Integer[1]                                                       $exec_timeout,
+  Acme_kvstore::Dh_param_size                                      $dh_param_size,
+
+  # Fields of the KV documents
+  Pattern[/\A[a-zA-Z0-9_.-]{1,120}\z/]                             $kv_client,
+
+  # Certificates from Hiera
+  Hash[Acme_kvstore::Certid, Acme_kvstore::Certificate_params]     $certificates,
+
+  # Optional defaults (undef: none)
+  Optional[Stdlib::Fqdn]                                           $default_worker      = undef,
+  Optional[Acme_kvstore::Area_name]                                $default_area        = undef,
+  Optional[String[1]]                                              $default_dns_profile = undef,
+  Optional[String[1]]                                              $posthook_cmd        = undef,
+  Optional[String[1]]                                              $proxy               = undef,
+  Optional[String[1]]                                              $renew_schedule      = undef,
+  Optional[String[1, 255]]                                         $kv_updated_by       = undef,
 ) {
   if $backend == 'consul' and empty($consul) {
     fail('acme_kvstore: $backend = \'consul\', but $consul has not been configured')
