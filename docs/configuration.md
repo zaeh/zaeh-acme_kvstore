@@ -147,6 +147,7 @@ been evaluated.
 | `ca_profiles` | `Hash[String[1], Acme_kvstore::Ca_profile]` | `letsencrypt` + `letsencrypt_test` | Predefined ACME CA configurations, see [profiles.md](profiles.md). |
 | `default_ca_profile` | `String[1]` | `'letsencrypt'` | CA profile used when a certificate does not specify one. |
 | `ca_whitelist` | `Array[String[1]]` | `['letsencrypt', 'letsencrypt_test']` | CA profile names certificates are actually allowed to request. |
+| `ca_bundle_include_system` | `Boolean` | `false` | Adds the worker's system trust store to the CA certificates of CA/DNS profiles, which otherwise replace it for acme.sh. See [profiles.md](profiles.md#ca-certificates-for-private-cas-and-dns-apis). |
 | `posthook_cmd` | `Optional[String[1]]` | `undef` | Default command run on the worker after a successful issue/renew. See [profiles.md](profiles.md#posthook_cmd). |
 | `proxy` | `Optional[String[1]]` | `undef` | Default HTTP(S) proxy for acme.sh's outbound connections. See [profiles.md](profiles.md#proxy). |
 | `exec_timeout` | `Integer[1]` | `300` | Default maximum time in seconds any single acme.sh invocation may run. Must be higher than `dnssleep`. See [profiles.md](profiles.md#exec_timeout). |
@@ -259,6 +260,7 @@ them.
 | `acme_log_level` | `Integer[1, 2]` | `1` | acme.sh `--log-level`: `1` (normal) or `2` (debug). |
 | `manage_log_dir` | `Boolean` | `true` | Manage the directory of `acme_log_file` (owned by `user`). Set to `false` for a shared directory such as `/var/log`. |
 | `config_dir` | `Stdlib::Absolutepath` | `/etc/acme_kvstore` | Directory for generated acme.sh files, e.g. nsupdate TSIG keys (see [profiles.md](profiles.md#nsupdate-bind-tsig-keys)). |
+| `system_ca_bundle` | `Stdlib::Absolutepath` | `/etc/ssl/certs/ca-certificates.crt`, RedHat family `/etc/pki/tls/certs/ca-bundle.crt` | The OS trust store as one PEM file, used with `acme_kvstore::ca_bundle_include_system`. |
 
 ## Defined type `acme_kvstore::certificate`
 

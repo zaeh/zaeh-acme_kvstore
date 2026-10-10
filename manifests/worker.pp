@@ -22,6 +22,9 @@
 # @param group Group of user and owner group of home/webroot.
 # @param webroot Webroot for HTTP-01.
 # @param config_dir Directory for generated files such as nsupdate TSIG keys.
+# @param system_ca_bundle
+#   The OS trust store as one PEM file, added to profile CA certificates with
+#   acme_kvstore::ca_bundle_include_system.
 # @param acme_log_file acme.sh log file, or false for none; not rotated.
 # @param acme_log_level acme.sh log level: 1 (normal) or 2 (debug).
 # @param manage_log_dir Manage the log file's directory (false for shared ones like /var/log).
@@ -47,6 +50,7 @@ class acme_kvstore::worker (
   String[1]                                     $group,
   Stdlib::Absolutepath                          $webroot,
   Stdlib::Absolutepath                          $config_dir,
+  Stdlib::Absolutepath                          $system_ca_bundle,
 
   # Logging
   Variant[Stdlib::Absolutepath, Boolean[false]] $acme_log_file,
@@ -223,6 +227,40 @@ class acme_kvstore::worker (
         mode    => '0640',
         source  => $script['source'],
         content => $script['content'],
+      }
+    }
+  }
+
+  # CA certificates given as PEM (ca_certificates) by CA and DNS profiles,
+  # for acme.sh --ca-bundle; public, so world-readable. File names are
+  # prefixed with the kind of profile and made file-safe.
+  $ca_bundle_files = {
+    'ca'  => $acme_kvstore::ca_profiles,
+    'dns' => $acme_kvstore::dns_profiles,
+  }.reduce({}) |$memo, $kind| {
+    $files = $kind[1].filter |$profile_name, $profile| { $profile['ca_certificates'] =~ NotUndef }.reduce({}) |$kind_memo, $entry| {
+      $kind_memo + { $entry[0] => "${config_dir}/ca/${kind[0]}-${entry[0].regsubst('[^A-Za-z0-9_.-]', '_', 'G')}.pem" }
+    }
+    $memo + { $kind[0] => $files }
+  }
+
+  unless empty($ca_bundle_files['ca']) and empty($ca_bundle_files['dns']) {
+    file { "${config_dir}/ca":
+      ensure => directory,
+      owner  => 'root',
+      group  => $group,
+      mode   => '0755',
+    }
+
+    [['ca', $acme_kvstore::ca_profiles], ['dns', $acme_kvstore::dns_profiles]].each |$kind| {
+      $ca_bundle_files[$kind[0]].each |$profile_name, $path| {
+        file { $path:
+          ensure  => file,
+          owner   => 'root',
+          group   => $group,
+          mode    => '0644',
+          content => $kind[1][$profile_name]['ca_certificates'],
+        }
       }
     }
   }

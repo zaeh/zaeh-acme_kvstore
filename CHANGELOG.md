@@ -45,6 +45,10 @@ Initial development version, not released yet.
   a package (`acme_package_ensure`); `acme_version` pins it, and a changed
   version is installed; `manage_home`; the `redis` gem only with
   `manage_gems` (default `false`).
+- CA and DNS profiles can bring the CA certificates acme.sh trusts
+  (`ca_certificates` as PEM, or `ca_bundle` as a file on the worker), e.g.
+  for a private step-ca or an internal DNS API; joined per certificate, with
+  the system trust store only on request (`ca_bundle_include_system`).
 - Typed parameters (`types/`), defaults in module Hiera data with
   deep-merged hashes.
 - Tests: rspec-puppet/RuboCop/puppet-lint via voxpupuli-test on OpenVox 8

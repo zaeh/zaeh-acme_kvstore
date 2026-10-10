@@ -520,7 +520,8 @@ describe Puppet::Type.type(:acme_kvstore_certificate).provider(:consul) do
         challenge_alias: 'alias.example.com', domain_alias: 'domain-alias.example.com',
         proxy: 'proxy.example.com:3128', exec_timeout: 120,
         run_as_user: 'acme', run_as_group: 'acme', run_as_home: '/home/acme/.acme.sh',
-        dnssleep: 90, webroot: '/srv/acme-challenge', log_file: '/var/log/acme.sh/acme.log', log_level: 2
+        dnssleep: 90, webroot: '/srv/acme-challenge', log_file: '/var/log/acme.sh/acme.log', log_level: 2,
+        ca_bundles: ['/etc/acme_kvstore/ca/ca-stepca.pem', '/etc/acme_kvstore/ca/dns-infoblox.pem']
       )
       allow(kv_client).to receive(:transactional_update)
 
@@ -531,7 +532,8 @@ describe Puppet::Type.type(:acme_kvstore_certificate).provider(:consul) do
           challenge_alias: 'alias.example.com', domain_alias: 'domain-alias.example.com',
           proxy: 'proxy.example.com:3128', exec_timeout: 120,
           run_as_user: 'acme', run_as_group: 'acme', run_as_home: '/home/acme/.acme.sh',
-          dnssleep: 90, webroot: '/srv/acme-challenge', log_file: '/var/log/acme.sh/acme.log', log_level: 2
+          dnssleep: 90, webroot: '/srv/acme-challenge', log_file: '/var/log/acme.sh/acme.log', log_level: 2,
+          ca_bundles: ['/etc/acme_kvstore/ca/ca-stepca.pem', '/etc/acme_kvstore/ca/dns-infoblox.pem']
         ),
       ).and_return(issued)
 

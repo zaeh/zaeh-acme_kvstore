@@ -67,6 +67,7 @@ The following parameters are available in the `acme_kvstore` class:
 * [`dnsapi_scripts`](#-acme_kvstore--dnsapi_scripts)
 * [`ca_profiles`](#-acme_kvstore--ca_profiles)
 * [`ca_whitelist`](#-acme_kvstore--ca_whitelist)
+* [`ca_bundle_include_system`](#-acme_kvstore--ca_bundle_include_system)
 * [`default_ca_profile`](#-acme_kvstore--default_ca_profile)
 * [`renew_before_days`](#-acme_kvstore--renew_before_days)
 * [`purge_key_on_mismatch`](#-acme_kvstore--purge_key_on_mismatch)
@@ -165,6 +166,15 @@ Data type: `Array[String[1]]`
 CA profiles certificates may actually use.
 
 Default value: `['letsencrypt', 'letsencrypt_test']`
+
+##### <a name="-acme_kvstore--ca_bundle_include_system"></a>`ca_bundle_include_system`
+
+Data type: `Boolean`
+
+Whether the worker's system trust store is added when CA or DNS profiles
+bring CA certificates (which otherwise replace it for acme.sh).
+
+Default value: `false`
 
 ##### <a name="-acme_kvstore--default_ca_profile"></a>`default_ca_profile`
 
@@ -320,6 +330,7 @@ The following parameters are available in the `acme_kvstore::worker` class:
 * [`group`](#-acme_kvstore--worker--group)
 * [`webroot`](#-acme_kvstore--worker--webroot)
 * [`config_dir`](#-acme_kvstore--worker--config_dir)
+* [`system_ca_bundle`](#-acme_kvstore--worker--system_ca_bundle)
 * [`acme_log_file`](#-acme_kvstore--worker--acme_log_file)
 * [`acme_log_level`](#-acme_kvstore--worker--acme_log_level)
 * [`manage_log_dir`](#-acme_kvstore--worker--manage_log_dir)
@@ -439,6 +450,15 @@ Data type: `Stdlib::Absolutepath`
 Directory for generated files such as nsupdate TSIG keys.
 
 Default value: `'/etc/acme_kvstore'`
+
+##### <a name="-acme_kvstore--worker--system_ca_bundle"></a>`system_ca_bundle`
+
+Data type: `Stdlib::Absolutepath`
+
+The OS trust store as one PEM file, added to profile CA certificates with
+acme_kvstore::ca_bundle_include_system.
+
+Default value: `'/etc/ssl/certs/ca-certificates.crt'`
 
 ##### <a name="-acme_kvstore--worker--acme_log_file"></a>`acme_log_file`
 
@@ -1095,6 +1115,7 @@ The following parameters are available in the `acme_kvstore_certificate` type.
 * [`area`](#-acme_kvstore_certificate--area)
 * [`area_secret`](#-acme_kvstore_certificate--area_secret)
 * [`backend_config`](#-acme_kvstore_certificate--backend_config)
+* [`ca_bundles`](#-acme_kvstore_certificate--ca_bundles)
 * [`certid`](#-acme_kvstore_certificate--certid)
 * [`challenge_alias`](#-acme_kvstore_certificate--challenge_alias)
 * [`client_id`](#-acme_kvstore_certificate--client_id)
@@ -1150,6 +1171,14 @@ Logical area for the certificate (determines the KV namespace and area secret).
 
 Fully resolved backend connection details (Hash), including "prefix". Usually assembled by
 acme_kvstore::certificate.
+
+##### <a name="-acme_kvstore_certificate--ca_bundles"></a>`ca_bundles`
+
+Files of CA certificates acme.sh trusts instead of the system trust store, for all of its
+HTTPS requests (joined into one acme.sh --ca-bundle). Usually resolved from the CA and DNS
+profiles by acme_kvstore::certificate.
+
+Default value: `[]`
 
 ##### <a name="-acme_kvstore_certificate--certid"></a>`certid`
 
@@ -1468,7 +1497,7 @@ Data type: `Optional[Hash]`
 Optional settings: key_type, key_size, server, dns_provider, dns_env, dns_options,
 challenge_alias, domain_alias, account_email, eab_kid, eab_hmac_key, proxy,
 exec_timeout, run_as_user, run_as_group, run_as_home, acmesh_path, dnssleep (default 60), webroot,
-log_file, log_level.
+log_file, log_level, ca_bundles (files of CA certificates acme.sh trusts instead of the system store).
 
 ## Data types
 
@@ -1506,16 +1535,21 @@ Alias of `Pattern[/\A[a-z][a-z0-9_]{0,47}\z/]`
 ### <a name="Acme_kvstore--Ca_profile"></a>`Acme_kvstore::Ca_profile`
 
 directory_url is omitted for acme.sh's built-in CA aliases (the profile
-name is used instead). See docs/profiles.md.
+name is used instead). The CA certificates acme.sh trusts for this CA
+(instead of the system trust store) are given either as PEM text
+(ca_certificates, written to the worker) or as a file already on the
+worker (ca_bundle), not both. See docs/profiles.md.
 
 Alias of
 
 ```puppet
 Struct[{
-  Optional['directory_url'] => Stdlib::HTTPSUrl,
-  Optional['account_email'] => String[1],
-  Optional['eab_kid']       => Acme_kvstore::Secret,
-  Optional['eab_hmac_key']  => Acme_kvstore::Secret,
+  Optional['directory_url']   => Stdlib::HTTPSUrl,
+  Optional['account_email']   => String[1],
+  Optional['eab_kid']         => Acme_kvstore::Secret,
+  Optional['eab_hmac_key']    => Acme_kvstore::Secret,
+  Optional['ca_certificates'] => Pattern[/-----BEGIN CERTIFICATE-----/],
+  Optional['ca_bundle']       => Stdlib::Absolutepath,
 }]
 ```
 
@@ -1592,7 +1626,9 @@ Alias of `Variant[Integer[2048, 2048], Integer[3072, 3072], Integer[4096, 4096]]
 
 hook is the full acme.sh DNS API hook name ('dns_aws', 'dns_cf', ...);
 every hook shipped with acme.sh follows that naming. A hook acme.sh does
-not ship needs a script in $acme_kvstore::dnsapi_scripts. See docs/profiles.md.
+not ship needs a script in $acme_kvstore::dnsapi_scripts. The CA
+certificates of the DNS API's TLS certificate go into ca_certificates
+(PEM) or ca_bundle (a file on the worker), not both. See docs/profiles.md.
 
 Alias of
 
@@ -1603,6 +1639,8 @@ Struct[{
   Optional['options']         => Hash[String[1], Variant[String[1], Integer, Sensitive[String[1]]]],
   Optional['challenge_alias'] => Stdlib::Fqdn,
   Optional['domain_alias']    => Stdlib::Fqdn,
+  Optional['ca_certificates'] => Pattern[/-----BEGIN CERTIFICATE-----/],
+  Optional['ca_bundle']       => Stdlib::Absolutepath,
 }]
 ```
 

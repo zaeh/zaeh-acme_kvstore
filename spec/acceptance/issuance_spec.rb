@@ -107,6 +107,25 @@ require_relative 'acceptance_helper'
       expect(File.read(File.join(AcceptanceEnv.workdir, 'home', '.acme.sh', 'account.conf'))).not_to include('ACCEPTANCE_')
     end
 
+    # Pebble's TLS CA only via ca_bundle, not via the CA_BUNDLE the helper
+    # exports for the other examples.
+    # The bundle is joined from two files, as for a CA plus a DNS profile.
+    it 'trusts the CA through ca_bundles alone, and leaves no saved bundle behind' do
+      other = File.join(AcceptanceEnv.workdir, "other-#{certid}.pem")
+      File.write(other, AcceptanceEnv.pebble_root_pem)
+      exported = ENV.delete('CA_BUNDLE')
+      begin
+        provider(ca_bundles: [other, AcceptanceEnv.pebble_ca], account_email: 'pki@example.test').create
+        expect(read("web/certids/#{certid}")).to include('active_version' => 1)
+
+        # Without ca_bundles, acme.sh must not reach Pebble: no CA_BUNDLE was kept.
+        expect { provider(renew_before_days: 3650).create }.to raise_error(PuppetX::AcmeKvstore::Acmesh::Error)
+        expect(File.read(File.join(AcceptanceEnv.workdir, 'home', '.acme.sh', 'account.conf'))).not_to match(%r{^CA_BUNDLE=})
+      ensure
+        ENV['CA_BUNDLE'] = exported
+      end
+    end
+
     it 'stores no issuer entries with store_issuers => false' do
       provider(store_issuers: false).create
       expect(read("web/certids/#{certid}")['acme_renewal']).not_to have_key('issuers')

@@ -259,6 +259,76 @@ describe 'acme_kvstore::certificate' do
             'account_email' => 'ssl@example.com',
           )
         end
+
+        it { is_expected.to contain_acme_kvstore_certificate('shop-example-com').with_ca_bundles([]) }
+      end
+
+      context 'with CA certificates from the CA and the DNS profile' do
+        let(:facts) { worker_facts }
+        let(:params) { super().merge('use_ca_profile' => 'stepca', 'use_dns_profile' => 'infoblox') }
+        let(:pre_condition) do
+          <<~PUPPET
+            class { 'acme_kvstore':
+              backend                  => 'consul',
+              consul                   => { 'url' => 'https://consul.example.com:8501' },
+              areas                    => { 'web' => { 'secret' => '#{'S' * 32}', 'consul_token' => 'web-token' } },
+              default_worker           => 'worker1.example.com',
+              ca_profiles              => { 'stepca' => { 'directory_url' => 'https://ca.example.com/acme/acme/directory' } + #{ca_profile.inspect.gsub('=>', ' => ')} },
+              ca_whitelist             => ['stepca'],
+              default_ca_profile       => 'stepca',
+              dns_profiles             => { 'infoblox' => { 'hook' => 'dns_infoblox' } + #{dns_profile.inspect.gsub('=>', ' => ')} },
+              ca_bundle_include_system => #{include_system},
+            }
+          PUPPET
+        end
+
+        # Variants override these methods.
+        def pem = "-----BEGIN CERTIFICATE-----\nMIIB\n-----END CERTIFICATE-----\n"
+        def include_system = false
+        def ca_profile = { 'ca_certificates' => pem }
+        def dns_profile = { 'ca_bundle' => '/etc/pki/infoblox-ca.pem' }
+
+        def system_bundle
+          family = facts.dig(:os, 'family') || facts.dig('os', 'family')
+          (family == 'RedHat') ? '/etc/pki/tls/certs/ca-bundle.crt' : '/etc/ssl/certs/ca-certificates.crt'
+        end
+
+        it 'passes both, the CA profile first' do
+          is_expected.to contain_acme_kvstore_certificate('shop-example-com')
+            .with_ca_bundles(['/etc/acme_kvstore/ca/ca-stepca.pem', '/etc/pki/infoblox-ca.pem'])
+        end
+
+        context 'with only the DNS profile bringing them, as PEM' do
+          def ca_profile = {}
+          def dns_profile = { 'ca_certificates' => pem }
+
+          it { is_expected.to contain_acme_kvstore_certificate('shop-example-com').with_ca_bundles(['/etc/acme_kvstore/ca/dns-infoblox.pem']) }
+        end
+
+        context 'with ca_bundle_include_system' do
+          def include_system = true
+
+          it 'adds the system trust store of the OS first' do
+            is_expected.to contain_acme_kvstore_certificate('shop-example-com')
+              .with_ca_bundles([system_bundle, '/etc/acme_kvstore/ca/ca-stepca.pem', '/etc/pki/infoblox-ca.pem'])
+          end
+        end
+
+        context 'with ca_bundle_include_system but no profile CA certificates' do
+          def include_system = true
+          def ca_profile = {}
+          def dns_profile = {}
+
+          it 'keeps acme.sh on the system store as it is' do
+            is_expected.to contain_acme_kvstore_certificate('shop-example-com').with_ca_bundles([])
+          end
+        end
+
+        context 'with a manual dns_provider instead of the DNS profile' do
+          let(:params) { super().merge('dns_provider' => 'dns_cf') }
+
+          it { is_expected.to contain_acme_kvstore_certificate('shop-example-com').with_ca_bundles(['/etc/acme_kvstore/ca/ca-stepca.pem']) }
+        end
       end
 
       context 'with a CA profile that is not in the whitelist' do

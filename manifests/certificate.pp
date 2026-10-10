@@ -143,6 +143,7 @@ define acme_kvstore::certificate (
     $real_dns_profile_name = $use_dns_profile ? { undef => $acme_kvstore::default_dns_profile, default => $use_dns_profile }
 
     if $dns_provider {
+      $dns_profile_ca_bundle = undef
       $resolved_hook = $dns_provider
       $resolved_env = $dns_env
       $resolved_options = {}
@@ -155,6 +156,7 @@ define acme_kvstore::certificate (
         fail("acme_kvstore::certificate[${title}]: unknown DNS profile '${real_dns_profile_name}' (see \$acme_kvstore::dns_profiles)")
       }
       $resolved_hook = $dns_profile['hook']
+      $dns_profile_ca_bundle = pick_default($acme_kvstore::worker::ca_bundle_files['dns'][$real_dns_profile_name], $dns_profile['ca_bundle'], '')
       $profile_env = pick_default($dns_profile['env'], {}).reduce({}) |$memo, $kv| {
         $memo + { $kv[0] => acme_kvstore::unwrap_if_sensitive($kv[1]) }
       }
@@ -177,12 +179,26 @@ define acme_kvstore::certificate (
       $resolved_challenge_alias = $challenge_alias ? { undef => $dns_profile['challenge_alias'], default => $challenge_alias }
       $resolved_domain_alias = $domain_alias ? { undef => $dns_profile['domain_alias'], default => $domain_alias }
     } else {
+      $dns_profile_ca_bundle = undef
       $resolved_hook = undef
       $resolved_env = {}
       $resolved_options = {}
       $profile_dnssleep = undef
       $resolved_challenge_alias = $challenge_alias
       $resolved_domain_alias = $domain_alias
+    }
+
+    # CA certificates acme.sh trusts instead of the system store: those of the
+    # CA profile and of the DNS profile (PEM written by the worker, or a file
+    # already there), plus the system store if wanted. Without any, acme.sh
+    # keeps using the system store.
+    $profile_ca_bundles = [
+      pick_default($acme_kvstore::worker::ca_bundle_files['ca'][$use_ca_profile], $ca_profile['ca_bundle'], ''),
+      $dns_profile_ca_bundle,
+    ].filter |$path| { $path =~ String[1] }
+    $ca_bundles = empty($profile_ca_bundles) ? {
+      true    => [],
+      default => ($acme_kvstore::ca_bundle_include_system ? { true => [$acme_kvstore::worker::system_ca_bundle], default => [] }) + $profile_ca_bundles,
     }
 
     $real_dnssleep = [$dnssleep, $profile_dnssleep, $acme_kvstore::dnssleep].filter |$value| { $value =~ NotUndef }[0]
@@ -226,6 +242,7 @@ define acme_kvstore::certificate (
       account_email         => $account_email,
       eab_kid               => $eab_kid,
       eab_hmac_key          => $eab_hmac_key,
+      ca_bundles            => $ca_bundles,
       dns_provider          => $resolved_hook,
       dns_env               => $resolved_env,
       dns_options           => $resolved_options,

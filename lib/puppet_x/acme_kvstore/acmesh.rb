@@ -23,28 +23,22 @@ module PuppetX::AcmeKvstore
     TERM_GRACE_PERIOD = 5
 
     # dnssleep (DNS-01 only) also stops acme.sh from polling public DNS
-    # resolvers itself. No log file is written without log_file.
+    # resolvers itself. No log file is written without log_file. ca_bundles
+    # (files of CA certificates, joined into one) replace the trust store for
+    # all of acme.sh's HTTPS requests, the DNS hook's included.
     #
     # @return [Hash{Symbol=>String,nil}] :cert, :chain, :fullchain, :key (PEM or nil)
     def self.issue_or_renew(domains:, key_type:, key_size:, server:, dns_provider:, dns_env:, dns_options:,
                             challenge_alias:, domain_alias:, account_email:, eab_kid:, eab_hmac_key:, acmesh_path:,
                             proxy: nil, exec_timeout: nil,
                             run_as_user: nil, run_as_group: nil, run_as_home: nil,
-                            dnssleep: nil, webroot: DEFAULT_WEBROOT, log_file: nil, log_level: nil)
+                            dnssleep: nil, webroot: DEFAULT_WEBROOT, log_file: nil, log_level: nil, ca_bundles: [])
       domains = Array(domains)
       raise Error, 'at least one domain is required' if domains.empty?
       raise Error, "acme.sh not found or not executable: #{acmesh_path}" unless File.executable?(acmesh_path)
       raise Error, "wildcard domains require DNS-01 validation (a DNS hook), not HTTP-01: #{domains.join(', ')}" if (dns_provider.nil? || dns_provider.to_s.empty?) && domains.any? { |d| d.to_s.start_with?('*') }
 
       timeout = exec_timeout || DEFAULT_TIMEOUT
-
-      log_args = log_args(log_file, log_level)
-
-      ensure_account_registered(
-        acmesh_path:, server:,
-        account_email:, eab_kid:, eab_hmac_key:,
-        proxy:, timeout:, run_as_user:, run_as_group:, run_as_home:, log_args:
-      )
 
       Dir.mktmpdir('acme_kvstore') do |dir|
         paths = {
@@ -53,8 +47,16 @@ module PuppetX::AcmeKvstore
           chain:     File.join(dir, 'ca.pem'),
           fullchain: File.join(dir, 'fullchain.pem'),
         }
+        ca_bundle = join_ca_bundles(ca_bundles, File.join(dir, 'ca-bundle.pem'))
         # acme.sh, running as run_as_user, must write into this directory.
         chown_to_run_as_user(dir, run_as_user, run_as_group) if run_as_user
+
+        log_args = log_args(log_file, log_level) + ca_bundle_args(ca_bundle)
+        ensure_account_registered(
+          acmesh_path:, server:,
+          account_email:, eab_kid:, eab_hmac_key:,
+          proxy:, timeout:, run_as_user:, run_as_group:, run_as_home:, log_args:, ca_bundle:
+        )
 
         cmd = build_command(
           acmesh_path, domains, key_type, key_size, server, dns_provider,
@@ -62,15 +64,7 @@ module PuppetX::AcmeKvstore
           dnssleep:, webroot:
         ) + log_args
         env = build_env(dns_env, dns_options, proxy, run_as_home)
-        account_conf = account_conf_path(env['HOME'])
-        managed_keys = env.keys - ['HOME']
-
-        forget_saved_settings(account_conf, managed_keys)
-        begin
-          _out, err, status = run_with_timeout(env, cmd, timeout:, run_as_user:, run_as_group:)
-        ensure
-          forget_saved_settings(account_conf, managed_keys)
-        end
+        _out, err, status = run_acmesh(env, cmd, ca_bundle:, timeout:, run_as_user:, run_as_group:)
 
         raise Error, "acme.sh failed (exit #{status.exitstatus}):\n#{err}" unless status.success? || status.exitstatus == RENEW_NOT_DUE
 
@@ -96,7 +90,8 @@ module PuppetX::AcmeKvstore
     # data.
     def self.ensure_account_registered(acmesh_path:, server:, account_email:, eab_kid:, eab_hmac_key:,
                                        proxy: nil, timeout: DEFAULT_TIMEOUT,
-                                       run_as_user: nil, run_as_group: nil, run_as_home: nil, log_args: [])
+                                       run_as_user: nil, run_as_group: nil, run_as_home: nil, log_args: [],
+                                       ca_bundle: nil)
       return if account_email.nil? && eab_kid.nil?
 
       cmd = [acmesh_path, '--register-account', '--server', server]
@@ -106,7 +101,7 @@ module PuppetX::AcmeKvstore
       cmd += log_args
 
       env = build_env({}, {}, proxy, run_as_home)
-      _out, err, status = run_with_timeout(env, cmd, timeout:, run_as_user:, run_as_group:)
+      _out, err, status = run_acmesh(env, cmd, ca_bundle:, timeout:, run_as_user:, run_as_group:)
       raise Error, "acme.sh account registration failed (exit #{status.exitstatus}): #{err}" unless status.success?
     end
 
@@ -223,6 +218,44 @@ module PuppetX::AcmeKvstore
       false
     end
 
+    # One file for --ca-bundle: a single file as it is, several joined into
+    # joined_path (in the run's temporary directory, so run_as_user can read
+    # it and it disappears with the run). nil without any.
+    def self.join_ca_bundles(files, joined_path)
+      files = Array(files).map(&:to_s).reject(&:empty?).uniq
+      return nil if files.empty?
+
+      missing = files.reject { |file| File.file?(file) }
+      raise Error, "CA bundle(s) not found: #{missing.join(', ')}" unless missing.empty?
+      return files.first if files.size == 1
+
+      File.write(joined_path, files.map { |file| File.read(file).sub(%r{\n*\z}, "\n") }.join)
+      File.chmod(0o644, joined_path)
+      joined_path
+    end
+
+    # acme.sh 3.0.9: --ca-bundle sets CA_BUNDLE (curl --cacert); acme.sh
+    # saves it in account.conf, see run_acmesh.
+    def self.ca_bundle_args(ca_bundle)
+      (ca_bundle.nil? || ca_bundle.to_s.empty?) ? [] : ['--ca-bundle', ca_bundle.to_s]
+    end
+
+    # Runs acme.sh without the settings it saved earlier for the keys this
+    # module passes: account.conf is sourced after the command line is read,
+    # so a saved value would win over env and over --ca-bundle.
+    def self.run_acmesh(env, cmd, ca_bundle:, **run_opts)
+      account_conf = account_conf_path(env['HOME'])
+      managed_keys = env.keys - ['HOME']
+      managed_keys += %w[CA_BUNDLE CA_PATH] unless ca_bundle_args(ca_bundle).empty?
+
+      forget_saved_settings(account_conf, managed_keys)
+      begin
+        run_with_timeout(env, cmd, **run_opts)
+      ensure
+        forget_saved_settings(account_conf, managed_keys)
+      end
+    end
+
     # Where acme.sh keeps account.conf: LE_CONFIG_HOME, else LE_WORKING_DIR,
     # else $HOME/.acme.sh (acme.sh 3.0.9, __initHome).
     def self.account_conf_path(home)
@@ -261,6 +294,7 @@ module PuppetX::AcmeKvstore
 
     private_class_method :build_command, :key_length_args, :log_args, :build_env, :read_if_present, :chown_to_run_as_user,
                          :ensure_account_registered, :run_with_timeout, :terminate, :process_alive?,
-                         :account_conf_path, :forget_saved_settings
+                         :account_conf_path, :forget_saved_settings, :ca_bundle_args, :run_acmesh,
+                         :join_ca_bundles
   end
 end

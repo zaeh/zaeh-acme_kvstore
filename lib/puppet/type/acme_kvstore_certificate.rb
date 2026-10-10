@@ -184,6 +184,21 @@ Puppet::Type.newtype(:acme_kvstore_certificate) do
     end
   end
 
+  newparam(:ca_bundles) do
+    desc <<-EOT
+      Files of CA certificates acme.sh trusts instead of the system trust store, for all of its
+      HTTPS requests (joined into one acme.sh --ca-bundle). Usually resolved from the CA and DNS
+      profiles by acme_kvstore::certificate.
+    EOT
+    defaultto []
+    validate do |value|
+      Array(value).each do |path|
+        raise ArgumentError, "ca_bundles must be absolute paths, not '#{path}'" unless path.to_s.start_with?('/')
+      end
+    end
+    munge { |value| Array(value) }
+  end
+
   newparam(:webroot) do
     desc <<-EOT
       HTTP-01 only: webroot directory acme.sh writes the challenge files to (acme.sh --webroot).

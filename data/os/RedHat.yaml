@@ -1,0 +1,3 @@
+---
+# The OS trust store as one PEM file on RedHat and Rocky.
+acme_kvstore::worker::system_ca_bundle: '/etc/pki/tls/certs/ca-bundle.crt'
