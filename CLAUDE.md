@@ -300,6 +300,12 @@ warns. OpenVox 9 is deliberately not covered there (build time); its server JRub
   Puppet server does not put module `lib/` directories on `$LOAD_PATH`, so `require 'puppet_x/...'`
   works on agents (pluginsync libdir) and in specs but fails to compile there. Only Puppet's own
   `require 'puppet_x'` stays a plain require. The E2E tests catch a regression.
+- **acme.sh sources its `account.conf` on every start** (`_initpath`), so values a DNS hook saved
+  there with `_saveaccountconf` override the environment the module passes. `Acmesh` therefore
+  removes the keys it passes (also `SAVED_<key>`) from that file before and after each run
+  (`forget_saved_settings`); the path follows acme.sh: `LE_CONFIG_HOME`, else `LE_WORKING_DIR`, else
+  `$HOME/.acme.sh`. With a non-root worker `HOME` is `worker::home`, so the file used at run time is
+  `<home>/.acme.sh/account.conf` (the one `--install` writes into `<home>` is not read).
 - **The `redis` gem may arrive mid-run**: `acme_kvstore::worker` installs it with `puppet_gem`, so
   `RedisClient.load_gem` retries the `require` (after `Gem.clear_paths`) instead of trusting the
   load-time attempt.

@@ -57,6 +57,15 @@ class { 'acme_kvstore':
 | `challenge_alias` | no | See [DNS alias mode](#dns-alias-mode) below. |
 | `domain_alias` | no | See [DNS alias mode](#dns-alias-mode) below. |
 
+Many acme.sh hooks save their settings in acme.sh's `account.conf`
+(`_saveaccountconf`), and acme.sh reads that file on every start, so a
+saved value would override the one from the profile - a changed view,
+server or rotated credential would never take effect. The worker therefore
+removes the keys it passes (from `env`/`options`, also as `SAVED_<key>`)
+from `account.conf` before and after every acme.sh run; the profile always
+wins, and the values do not stay on disk. acme.sh's own settings in that
+file are left alone.
+
 A certificate picks a profile with `use_dns_profile`, falls back to
 `$acme_kvstore::default_dns_profile` if it does not name one, or falls
 back further still to HTTP-01 via webroot if neither resolves:

@@ -1,6 +1,7 @@
 # frozen_string_literal: true
 
 require 'spec_helper'
+require 'fileutils'
 require 'stringio'
 require 'puppet_x/acme_kvstore/acmesh'
 
@@ -45,6 +46,8 @@ describe PuppetX::AcmeKvstore::Acmesh do
 
   before do
     allow(File).to receive(:executable?).with(acmesh_path).and_return(true)
+    # Never touch a real ~/.acme.sh/account.conf; the examples below opt in.
+    allow(described_class).to receive(:account_conf_path).and_return('/nonexistent/acme_kvstore-spec/account.conf')
   end
 
   # Stubs every Open3.popen3 call: records (env, *cmd) in `calls`, writes a
@@ -302,6 +305,86 @@ describe PuppetX::AcmeKvstore::Acmesh do
 
       expect { described_class.issue_or_renew(**base_args, exec_timeout: 1) }
         .to raise_error(described_class::Error, %r{timed out after 1 seconds})
+    end
+  end
+
+  describe 'settings a DNS hook saved in account.conf' do
+    let(:home) { Dir.mktmpdir('acme_kvstore-spec') }
+    let(:dns_args) do
+      base_args.merge(dns_provider: 'dns_infoblox', run_as_home: home,
+                      dns_env: { 'Infoblox_Server' => 'ib.example.com', 'Infoblox_View' => 'internal', 'Infoblox_Creds' => 'u:p' })
+    end
+
+    def conf = File.join(home, '.acme.sh', 'account.conf')
+
+    before do
+      allow(described_class).to receive(:account_conf_path).and_call_original
+      FileUtils.mkdir_p(File.dirname(conf))
+      File.write(conf, <<~CONF)
+        ACME_USE_WGET='0'
+        Infoblox_View='default'
+        Infoblox_Server='old.example.com'
+        SAVED_Infoblox_Creds='old'
+        Infoblox_Viewer='unrelated'
+      CONF
+      File.chmod(0o600, conf)
+    end
+
+    after { FileUtils.rm_rf(home) }
+
+    # Records account.conf as acme.sh sees it on start, then saves the
+    # values like the hook does (_saveaccountconf).
+    def stub_hook(seen, status: success)
+      allow(Open3).to receive(:popen3) do |*args, &block|
+        args.pop if args.last.is_a?(Hash)
+        seen << File.read(conf)
+        File.write(conf, "Infoblox_View='internal'\nInfoblox_Creds='u:p'\n", mode: 'a')
+        block.call(instance_double(IO, close: nil), StringIO.new(''), StringIO.new(''), FakeWaitThr.new(pid: 1, status:))
+      end
+    end
+
+    it 'removes them before acme.sh starts, so the values from Hiera apply' do
+      seen = []
+      stub_hook(seen)
+      described_class.issue_or_renew(**dns_args)
+
+      expect(seen.first).not_to match(%r{^(SAVED_)?Infoblox_(View|Server|Creds)=})
+      expect(seen.first).to include("ACME_USE_WGET='0'", "Infoblox_Viewer='unrelated'")
+    end
+
+    it 'removes what the hook saved after the run, keeping other settings and the file mode' do
+      stub_hook([])
+      described_class.issue_or_renew(**dns_args)
+
+      expect(File.read(conf)).to eq("ACME_USE_WGET='0'\nInfoblox_Viewer='unrelated'\n")
+      expect(File.stat(conf).mode & 0o777).to eq(0o600)
+    end
+
+    it 'cleans up also when acme.sh fails' do
+      stub_hook([], status: instance_double(Process::Status, success?: false, exitstatus: 1))
+
+      expect { described_class.issue_or_renew(**dns_args) }.to raise_error(described_class::Error)
+      expect(File.read(conf)).not_to include('Infoblox_View=')
+    end
+
+    it 'creates no account.conf when there is none' do
+      FileUtils.rm_f(conf)
+      stub_popen3([])
+      described_class.issue_or_renew(**dns_args)
+
+      expect(File).not_to exist(conf)
+    end
+
+    it 'uses LE_CONFIG_HOME when set, like acme.sh' do
+      config_home = File.join(home, 'config')
+      allow(ENV).to receive(:fetch).and_call_original
+      allow(ENV).to receive(:fetch).with('LE_CONFIG_HOME', nil).and_return(config_home)
+
+      expect(described_class.send(:account_conf_path, home)).to eq(File.join(config_home, 'account.conf'))
+    end
+
+    it 'defaults to $HOME/.acme.sh/account.conf' do
+      expect(described_class.send(:account_conf_path, home)).to eq(conf)
     end
   end
 
