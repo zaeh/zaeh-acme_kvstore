@@ -33,7 +33,7 @@ before 1.0.0.
   the Puppet server
 - [acme.sh](https://github.com/acmesh-official/acme.sh) on the ACME worker,
   installed by `acme_kvstore::worker`
-- with Redis: the `redis` gem on the worker (installed automatically) and in
+- with Redis: the `redis` gem on the worker (`acme_kvstore::worker::manage_gems: true`) and in
   the Puppet server's JRuby (`puppetserver gem install redis`), see
   [docs/redis.md](docs/redis.md#prerequisite)
 - modules [puppetlabs/stdlib](https://forge.puppet.com/modules/puppetlabs/stdlib)

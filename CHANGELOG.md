@@ -40,6 +40,11 @@ Initial development version, not released yet.
   leaves alone, `delete` removes); optionally with the root CA
   (`chain_include_root`) for applications without a trust store;
   `acme_kvstore::lookup_cert` and `acme_kvstore_cert_data` for custom use.
+- `acme_kvstore::worker` installs acme.sh from Git, from a tarball
+  (`install_method => 'archive'`, `acme_archive_url`, SHA-256-checked) or as
+  a package (`acme_package_ensure`); `acme_version` pins it, and a changed
+  version is installed; `manage_home`; the `redis` gem only with
+  `manage_gems` (default `false`).
 - Typed parameters (`types/`), defaults in module Hiera data with
   deep-merged hashes.
 - Tests: rspec-puppet/RuboCop/puppet-lint via voxpupuli-test on OpenVox 8

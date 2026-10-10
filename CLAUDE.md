@@ -306,6 +306,10 @@ warns. OpenVox 9 is deliberately not covered there (build time); its server JRub
   (`forget_saved_settings`); the path follows acme.sh: `LE_CONFIG_HOME`, else `LE_WORKING_DIR`, else
   `$HOME/.acme.sh`. With a non-root worker `HOME` is `worker::home`, so the file used at run time is
   `<home>/.acme.sh/account.conf` (the one `--install` writes into `<home>` is not read).
+- **acme.sh installation** (`git` via vcsrepo, `archive` via a checksum-verified `file` download plus
+  `tar --strip-components=1`, or `package`): the install exec has no `creates` but an `unless`
+  comparing the `VER=` lines of source and installed script, so a changed `acme_version` is
+  installed; files cannot be compared because `--install` rewrites the shebang to bash.
 - **The `redis` gem may arrive mid-run**: `acme_kvstore::worker` installs it with `puppet_gem`, so
   `RedisClient.load_gem` retries the `require` (after `Gem.clear_paths`) instead of trusting the
   load-time attempt.

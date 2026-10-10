@@ -30,6 +30,19 @@ describe 'acme_kvstore::worker' do
 
         it { is_expected.not_to contain_file('/var/www') }
         it { is_expected.to contain_exec('acme_kvstore-install-acmesh').with_cwd('/opt/acme.sh-src') }
+
+        it 'reinstalls acme.sh only when the source has another VER (no creates)' do
+          is_expected.to contain_exec('acme_kvstore-install-acmesh').with(
+            'command'  => '/opt/acme.sh-src/acme.sh --install --home /root/.acme.sh --nocron',
+            'provider' => 'shell',
+            'unless'   => "test -x '/root/.acme.sh/acme.sh' && " \
+                          "[ \"$(grep -m1 '^VER=' '/opt/acme.sh-src/acme.sh')\" = \"$(grep -m1 '^VER=' '/root/.acme.sh/acme.sh')\" ]",
+            'creates'  => nil,
+          ).that_requires('Vcsrepo[/opt/acme.sh-src]')
+        end
+
+        it { is_expected.not_to contain_package('acme_kvstore-redis-gem') }
+        it { is_expected.not_to contain_package('acme.sh') }
         it { is_expected.to contain_package('acme_kvstore-git').with_name('git') }
         it { is_expected.to contain_vcsrepo('/opt/acme.sh-src').with_revision('3.0.9').with_force(false) }
         it { is_expected.to contain_file('/var/log/acme.sh').with_ensure('directory').with_owner('root').with_mode('0750') }
@@ -77,12 +90,83 @@ describe 'acme_kvstore::worker' do
 
         it do
           is_expected.to contain_user('acme').with(
-            'gid'    => 'acme',
-            'home'   => '/home/acme/.acme.sh',
+            'gid' => 'acme',
+            'home' => '/home/acme/.acme.sh',
             'system' => true,
-            'shell'  => '/usr/sbin/nologin',
+            'shell' => '/usr/sbin/nologin',
+            'managehome' => true,
           )
         end
+      end
+
+      context 'with manage_gems => true' do
+        let(:params) { { 'manage_gems' => true } }
+
+        it { is_expected.to contain_package('acme_kvstore-redis-gem').with(name: 'redis', provider: 'puppet_gem') }
+      end
+
+      context "with install_method => 'archive'" do
+        let(:params) { { 'install_method' => 'archive' } }
+
+        it { is_expected.to compile.with_all_deps }
+        it { is_expected.not_to contain_vcsrepo('/opt/acme.sh-src') }
+        it { is_expected.not_to contain_package('acme_kvstore-git') }
+
+        it 'downloads the GitHub archive of acme_version, checked against the SHA-256' do
+          is_expected.to contain_file('/opt/acme.sh-3.0.9.tar.gz').with(
+            'source'         => 'https://github.com/acmesh-official/acme.sh/archive/refs/tags/3.0.9.tar.gz',
+            'checksum'       => 'sha256',
+            'checksum_value' => 'a599e8373cd327fb611362bec6f1bfb0bf65c97b3401c440cfea9304a0f0cb41',
+          )
+        end
+
+        it 'unpacks it into a directory of its own, whatever its top directory' do
+          is_expected.to contain_exec('acme_kvstore-extract-acmesh').with(
+            'command' => ['tar', 'xzf', '/opt/acme.sh-3.0.9.tar.gz', '-C', '/opt/acme.sh-3.0.9', '--strip-components=1'],
+            'creates' => '/opt/acme.sh-3.0.9/acme.sh',
+          ).that_requires(['File[/opt/acme.sh-3.0.9.tar.gz]', 'File[/opt/acme.sh-3.0.9]'])
+        end
+
+        it 'installs from there' do
+          is_expected.to contain_exec('acme_kvstore-install-acmesh')
+            .with(command: '/opt/acme.sh-3.0.9/acme.sh --install --home /root/.acme.sh --nocron', cwd: '/opt/acme.sh-3.0.9')
+            .that_requires('Exec[acme_kvstore-extract-acmesh]')
+        end
+      end
+
+      context "with install_method => 'archive' from a mirror" do
+        let(:params) do
+          { 'install_method' => 'archive', 'acme_version' => '3.1.1', 'acme_archive_url' => 'https://mirror.example.com/acme.sh-3.1.1.tar.gz',
+            'acme_archive_sha256' => 'b' * 64, }
+        end
+
+        it do
+          is_expected.to contain_file('/opt/acme.sh-3.1.1.tar.gz')
+            .with(source: 'https://mirror.example.com/acme.sh-3.1.1.tar.gz', checksum_value: 'b' * 64)
+        end
+      end
+
+      context 'with an invalid acme_archive_sha256' do
+        let(:params) { { 'install_method' => 'archive', 'acme_archive_sha256' => 'not-a-checksum' } }
+
+        it { is_expected.to compile.and_raise_error(%r{acme_archive_sha256}) }
+      end
+
+      context "with install_method => 'package' and a fixed version" do
+        let(:params) { { 'install_method' => 'package', 'acme_package_ensure' => '3.0.9-1' } }
+
+        it { is_expected.to compile.with_all_deps }
+        it { is_expected.to contain_package('acme.sh').with_ensure('3.0.9-1') }
+        it { is_expected.not_to contain_exec('acme_kvstore-install-acmesh') }
+        it { is_expected.not_to contain_vcsrepo('/opt/acme.sh-src') }
+      end
+
+      context 'with manage_user => true and manage_home => false' do
+        let(:params) { { 'manage_user' => true, 'manage_home' => false, 'user' => 'acme', 'group' => 'acme' } }
+
+        it { is_expected.to compile.with_all_deps }
+        it { is_expected.to contain_user('acme').with_managehome(false) }
+        it { is_expected.not_to contain_file('/home/acme/.acme.sh') }
       end
 
       context 'with a custom acme_git_url, acme_git_force and acme_version' do

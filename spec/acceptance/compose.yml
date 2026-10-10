@@ -72,7 +72,7 @@ services:
 
   worker:
     profiles: [e2e]
-    build: &agent
+    build:
       context: e2e
       dockerfile: agent-${E2E_OS:-ubuntu24.04}.Dockerfile
       args:
@@ -84,7 +84,9 @@ services:
 
   consumer:
     profiles: [e2e]
-    build: *agent
+    # The worker's image: building the same image twice in parallel can
+    # break BuildKit ("failed to receive status ... EOF").
     image: acme_kvstore_e2e_agent:${E2E_OS:-ubuntu24.04}
+    pull_policy: never
     hostname: consumer
     domainname: acceptance.test

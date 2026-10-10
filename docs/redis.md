@@ -4,8 +4,9 @@
 
 The Ruby gem `redis` must be installed wherever the module talks to Redis:
 
-- on the ACME worker - automatically via
-  `acme_kvstore::worker { manage_gems => true }` (the default);
+- on the ACME worker - set `acme_kvstore::worker::manage_gems: true`
+  (default `false`, since only the Redis backend needs it), or install it
+  yourself with `package { 'redis': provider => puppet_gem }`;
 - on every Puppet/OpenVox **server** that compiles catalogues with
   `acme_kvstore::deploy` or `acme_kvstore::lookup_cert`, since those read
   Redis while compiling. The server runs its own JRuby with its own gems,

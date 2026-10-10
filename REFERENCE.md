@@ -307,12 +307,15 @@ Defaults: data/common.yaml.
 The following parameters are available in the `acme_kvstore::worker` class:
 
 * [`install_method`](#-acme_kvstore--worker--install_method)
+* [`acme_version`](#-acme_kvstore--worker--acme_version)
 * [`acme_git_url`](#-acme_kvstore--worker--acme_git_url)
 * [`acme_git_force`](#-acme_kvstore--worker--acme_git_force)
-* [`acme_version`](#-acme_kvstore--worker--acme_version)
+* [`acme_archive_sha256`](#-acme_kvstore--worker--acme_archive_sha256)
+* [`acme_package_ensure`](#-acme_kvstore--worker--acme_package_ensure)
 * [`manage_packages`](#-acme_kvstore--worker--manage_packages)
 * [`manage_gems`](#-acme_kvstore--worker--manage_gems)
 * [`manage_user`](#-acme_kvstore--worker--manage_user)
+* [`manage_home`](#-acme_kvstore--worker--manage_home)
 * [`user`](#-acme_kvstore--worker--user)
 * [`group`](#-acme_kvstore--worker--group)
 * [`webroot`](#-acme_kvstore--worker--webroot)
@@ -320,15 +323,25 @@ The following parameters are available in the `acme_kvstore::worker` class:
 * [`acme_log_file`](#-acme_kvstore--worker--acme_log_file)
 * [`acme_log_level`](#-acme_kvstore--worker--acme_log_level)
 * [`manage_log_dir`](#-acme_kvstore--worker--manage_log_dir)
+* [`acme_archive_url`](#-acme_kvstore--worker--acme_archive_url)
 * [`home`](#-acme_kvstore--worker--home)
 
 ##### <a name="-acme_kvstore--worker--install_method"></a>`install_method`
 
-Data type: `Enum['git', 'package']`
+Data type: `Enum['git', 'archive', 'package']`
 
-Install acme.sh from 'git' or as a 'package'.
+Install acme.sh from 'git', from an 'archive' (tarball from a URL) or as a 'package'.
 
 Default value: `'git'`
+
+##### <a name="-acme_kvstore--worker--acme_version"></a>`acme_version`
+
+Data type: `String[1]`
+
+acme.sh version: the Git tag (or branch/commit) for 'git', the version in the default
+archive URL for 'archive'; pinned so updates are deliberate. A change is installed.
+
+Default value: `'3.0.9'`
 
 ##### <a name="-acme_kvstore--worker--acme_git_url"></a>`acme_git_url`
 
@@ -346,13 +359,21 @@ Recreate the clone, discarding local changes.
 
 Default value: `false`
 
-##### <a name="-acme_kvstore--worker--acme_version"></a>`acme_version`
+##### <a name="-acme_kvstore--worker--acme_archive_sha256"></a>`acme_archive_sha256`
+
+Data type: `Pattern[/\A\h{64}\z/]`
+
+SHA-256 of the archive; the download is discarded on a mismatch.
+
+Default value: `'a599e8373cd327fb611362bec6f1bfb0bf65c97b3401c440cfea9304a0f0cb41'`
+
+##### <a name="-acme_kvstore--worker--acme_package_ensure"></a>`acme_package_ensure`
 
 Data type: `String[1]`
 
-acme.sh tag/branch/commit; pinned so updates are deliberate.
+ensure of the 'acme.sh' package, e.g. a fixed version such as '3.0.9-1'.
 
-Default value: `'3.0.9'`
+Default value: `'installed'`
 
 ##### <a name="-acme_kvstore--worker--manage_packages"></a>`manage_packages`
 
@@ -366,9 +387,9 @@ Default value: `true`
 
 Data type: `Boolean`
 
-Install the redis gem for the Redis provider.
+Install the redis gem (needed on the worker for the Redis backend only).
 
-Default value: `true`
+Default value: `false`
 
 ##### <a name="-acme_kvstore--worker--manage_user"></a>`manage_user`
 
@@ -377,6 +398,15 @@ Data type: `Boolean`
 Create user/group (false: use an existing account).
 
 Default value: `false`
+
+##### <a name="-acme_kvstore--worker--manage_home"></a>`manage_home`
+
+Data type: `Boolean`
+
+Manage $home (ownership, and the user's home directory with manage_user); with false it
+must exist and belong to $user.
+
+Default value: `true`
 
 ##### <a name="-acme_kvstore--worker--user"></a>`user`
 
@@ -433,6 +463,15 @@ Data type: `Boolean`
 Manage the log file's directory (false for shared ones like /var/log).
 
 Default value: `true`
+
+##### <a name="-acme_kvstore--worker--acme_archive_url"></a>`acme_archive_url`
+
+Data type: `Optional[Stdlib::HTTPUrl]`
+
+URL of the acme.sh tarball for 'archive' (e.g. an internal mirror); undef: the GitHub
+archive of acme_version.
+
+Default value: `undef`
 
 ##### <a name="-acme_kvstore--worker--home"></a>`home`
 
