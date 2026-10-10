@@ -50,6 +50,8 @@ module E2eEnv
       # Pebble's default profile issues 6-day certificates.
       'acme_kvstore::renew_before_days' => 1,
       'acme_kvstore::worker::manage_user' => true,
+      'acme_kvstore::worker::manage_gems' => true, # the worker writes to Redis too
+      'acme_kvstore::worker::install_method' => ENV.fetch('E2E_INSTALL_METHOD', 'git'),
       'acme_kvstore::worker::user' => 'acme',
       'acme_kvstore::worker::group' => 'acme',
       'acme_kvstore::certificates' => certificates,

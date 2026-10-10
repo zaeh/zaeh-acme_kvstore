@@ -88,8 +88,9 @@ jobs:
       fail-fast: false
       matrix:
         os:
-          - { id: ubuntu24.04, name: Ubuntu 24.04 }
-          - { id: rocky9, name: Rocky 9 }
+          # Each installs acme.sh another way (names are required checks: keep them).
+          - { id: ubuntu24.04, name: Ubuntu 24.04, install: git }
+          - { id: rocky9, name: Rocky 9, install: archive }
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -101,6 +102,7 @@ jobs:
       - name: OpenVox server, ACME worker and consumer (containers)
         env:
           E2E_OS: ${{ matrix.os.id }}
+          E2E_INSTALL_METHOD: ${{ matrix.os.install }}
           # archive.ubuntu.com is slow from GitHub's runners; they run in Azure.
           E2E_UBUNTU_MIRROR: http://azure.archive.ubuntu.com/ubuntu/
         run: bundle exec rake acceptance:e2e

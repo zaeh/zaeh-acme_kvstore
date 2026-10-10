@@ -44,12 +44,16 @@ acme_kvstore::kv_client: 'puppet'
 acme_kvstore::certificates: {}
 
 acme_kvstore::worker::install_method: 'git'
+acme_kvstore::worker::acme_version: '3.0.9'
 acme_kvstore::worker::acme_git_url: 'https://github.com/acmesh-official/acme.sh.git'
 acme_kvstore::worker::acme_git_force: false
-acme_kvstore::worker::acme_version: '3.0.9'
+# SHA-256 of the GitHub archive of acme.sh 3.0.9; change it with acme_version.
+acme_kvstore::worker::acme_archive_sha256: 'a599e8373cd327fb611362bec6f1bfb0bf65c97b3401c440cfea9304a0f0cb41'
+acme_kvstore::worker::acme_package_ensure: 'installed'
 acme_kvstore::worker::manage_packages: true
-acme_kvstore::worker::manage_gems: true
+acme_kvstore::worker::manage_gems: false
 acme_kvstore::worker::manage_user: false
+acme_kvstore::worker::manage_home: true
 acme_kvstore::worker::user: 'root'
 acme_kvstore::worker::group: 'root'
 acme_kvstore::worker::webroot: '/var/www/acme-challenge'

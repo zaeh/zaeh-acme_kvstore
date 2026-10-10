@@ -240,13 +240,17 @@ them.
 
 | Parameter | Type | Default | Description |
 | --- | --- | --- | --- |
-| `install_method` | `Enum['git','package']` | `'git'` | How acme.sh is installed. |
+| `install_method` | `Enum['git','archive','package']` | `'git'` | How acme.sh is installed: cloned from Git, from a tarball (`archive`), or as an OS package. |
+| `acme_version` | `String[1]` | `'3.0.9'` | acme.sh version: the Git tag (or branch/commit) for `git`, the version in the default archive URL for `archive`. Pinned, so acme.sh is only updated deliberately; a changed version is installed on the next run. |
 | `acme_git_url` | `String[1]` | the official GitHub repo | Git URL to clone acme.sh from. Override to use an internal mirror. |
 | `acme_git_force` | `Boolean` | `false` | Force-recreate the cloned repository. Useful after changing `acme_git_url`. |
-| `acme_version` | `String[1]` | `'3.0.9'` | Git tag/branch/commit of acme.sh. Pinned to a fixed release, so acme.sh is only updated deliberately. |
+| `acme_archive_url` | `Optional[Stdlib::HTTPUrl]` | `undef` (GitHub archive of `acme_version`) | Tarball for `archive`, e.g. on an internal mirror. Unpacked into `/opt/acme.sh-<acme_version>`, whatever its top directory. |
+| `acme_archive_sha256` | `Pattern[/\A\h{64}\z/]` | SHA-256 of the GitHub archive of 3.0.9 | Checksum of the tarball; Puppet discards a download that does not match. Change it together with `acme_version`/`acme_archive_url`. |
+| `acme_package_ensure` | `String[1]` | `'installed'` | `ensure` of the `acme.sh` package for `package`, e.g. a fixed version such as `'3.0.9-1'`. |
 | `manage_packages` | `Boolean` | `true` | Installs the `git` package needed by `install_method => 'git'`. |
-| `manage_gems` | `Boolean` | `true` | Installs the `redis` gem for the Redis provider. |
+| `manage_gems` | `Boolean` | `false` | Installs the `redis` gem, which the worker needs for the Redis backend only. |
 | `manage_user` | `Boolean` | `false` | Whether to create the `user`/`group` accounts (`false` to reuse an existing account). |
+| `manage_home` | `Boolean` | `true` | Whether to manage `home` (owned by `user`) and, with `manage_user`, the user's home directory. With `false`, `home` must exist and belong to `user`. |
 | `user` | `String[1]` | `'root'` | Run acme.sh as this user. See [security.md](security.md#dedicated-worker-user). |
 | `group` | `String[1]` | `'root'` | Group for `user` and for ownership of `home`/`webroot`. |
 | `home` | `Stdlib::Absolutepath` | `/root/.acme.sh`, or `/home/<user>/.acme.sh` once `user` is non-root | acme.sh's `--home`. |
