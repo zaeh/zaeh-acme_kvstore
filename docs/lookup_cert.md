@@ -216,3 +216,27 @@ the files:
 | `cert_mode` | `Stdlib::Filemode` | `'0644'` | File mode for all files without a private key. |
 | `key_mode` | `Stdlib::Filemode` | `'0600'` | File mode for `key_path` and `combined_path`. |
 | `notify_services` | `Array[String[1]]` | `[]` | Names of `Service` resources to notify when any file changes. |
+| `mock` | `Optional[Boolean]` | `undef` (-> Hiera `acme_kvstore::deploy::mock`, default `false`) | Write a fake certificate instead of reading the KV store, for tests. See [Mock mode](#mock-mode). |
+
+### Mock mode
+
+For tests - e.g. a pipeline that builds an application with TLS but has no
+access to Consul/Redis - `mock => true`, or `acme_kvstore::deploy::mock:
+true` in Hiera for a whole test environment, makes `deploy` write a fake
+certificate instead:
+
+- no KV store is read, and no area, backend or credentials need to exist;
+- the leaf certificate has the certid as CN (and as SAN when it is a host
+  name) and is signed by a fixed mock PKI shipped with the module
+  (`files/mock`): root and intermediate are valid until the end of 2099;
+- it is the same on every compilation (fixed dates and key, serial derived
+  from the certid, deterministic RSA signatures), so files do not change
+  between runs; on MRI and on the server's JRuby alike;
+- all file options work as usual (`key_path`, `chain_path`,
+  `fullchain_path`, `combined_path`, `chain_include_root`, DH parameters).
+  The status is always `active`.
+
+The private keys of the mock PKI are public, in this repository: **never
+use mock mode in production.** The compiler logs a notice for each mock
+deployment. The same data is available as the function
+`acme_kvstore::mock_cert($certid, $decrypt_key, $include_chain, $include_root)`.

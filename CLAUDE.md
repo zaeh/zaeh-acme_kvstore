@@ -289,6 +289,12 @@ warns. OpenVox 9 is deliberately not covered there (build time); its server JRub
   OpenSSL features jruby-openssl supports; that is why the DH groups are static files and PEM
   bundles are split with a regex. Mind the differences: `X509::Name#to_a` returns raw bytes under
   MRI but already decoded UTF-8 under JRuby (see `KvDocument.name_text`). With Redis, the server needs `puppetserver gem install redis`.
+- **Mock mode of `deploy`** (`MockCert`, function `mock_cert`, PKI in `files/mock` from
+  `rake mock:pki`): the leaf per certid must stay byte-identical on every compilation and on MRI and
+  JRuby alike (checked by `rake jruby:compat` and the E2E consumer) - fixed dates and leaf key, serial
+  from the certid, RSA PKCS#1 v1.5 signatures. Build extensions so both engines encode them the
+  same: jruby-openssl's `ExtensionFactory` writes `CA:FALSE` with an explicit FALSE, so
+  `basicConstraints` is built from DER directly. The mock keys are public test material.
 - **`posthook_cmd` runs on the ACME worker only**, never on consumer nodes; consumers react to
   changed files via `acme_kvstore::deploy`'s `notify_services`.
 - **`acme_kvstore::deploy` must stay independent** of the `acme_kvstore` class, the worker and

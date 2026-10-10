@@ -1,0 +1,10 @@
+---
+# Test-only Hiera for acme_kvstore::deploy's mock mode (spec/defines/deploy_spec.rb):
+# only the switch, no backend, credentials or areas.
+version: 5
+defaults:
+  datadir: data
+  data_hash: yaml_data
+hierarchy:
+  - name: 'common'
+    path: 'common.yaml'

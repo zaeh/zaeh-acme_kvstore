@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 
-# Checks the lookup-side code (CertLookup, Crypto, KvDocument) under the Ruby
+# Checks the lookup-side code (CertLookup, Crypto, KvDocument, MockCert) under the Ruby
 # that runs it: MRI on agents/workers, JRuby on the Puppet/OpenVox server,
 # where acme_kvstore::lookup_cert and acme_kvstore::deploy compile. Run via
 # `bundle exec rake jruby:compat` (see jruby.rake next to this file):
@@ -26,10 +26,13 @@ end
 require 'puppet_x/acme_kvstore/crypto'
 require 'puppet_x/acme_kvstore/kv_document'
 require 'puppet_x/acme_kvstore/cert_lookup'
+require 'puppet_x/acme_kvstore/mock_cert'
 
 CRYPTO = PuppetX::AcmeKvstore::Crypto
 DOC = PuppetX::AcmeKvstore::KvDocument
 AAD = CRYPTO.aad('web', 'shop-example-com', 2)
+MOCK = PuppetX::AcmeKvstore::MockCert
+MOCK_CERTIDS = ['shop.example.com', 'shop_example_com', 'x' * 100].freeze
 
 def make_cert(subject, key, issuer = nil, issuer_key = nil, ca_flag: false, serial: 1)
   cert = OpenSSL::X509::Certificate.new
@@ -67,7 +70,8 @@ def write_fixture(dir)
                                                'envelope' => CRYPTO.encrypt(leaf_key.private_to_pem, secret, aad: AAD),
                                                'fp' => [root, int, leaf].zip(%w[root int leaf]).to_h { |c, n| [n, OpenSSL::Digest::SHA256.hexdigest(c.to_der)] },
                                                'certid' => [root, int, bmp].zip(%w[root int bmp]).to_h { |c, n| [n, DOC.issuer_certid(c)] },
-                                               'bmp' => bmp.to_pem
+                                               'bmp' => bmp.to_pem,
+                                               'mock' => MOCK_CERTIDS.to_h { |certid| [certid, MOCK.leaf_pem(certid)] }
                                              ))
 end
 
@@ -98,6 +102,14 @@ def run_checks(dir)
     rescue StandardError => e
       "#{e.class}: #{e.message}"
     end
+  end
+
+  # deploy's mock mode must give the same certificate on MRI and on the server's JRuby.
+  check.call('mock: same leaf certificates as MRI') { MOCK_CERTIDS.all? { |certid| MOCK.leaf_pem(certid) == f['mock'][certid] } }
+  check.call('mock: chain verifies to the mock root') do
+    store = OpenSSL::X509::Store.new
+    store.add_cert(OpenSSL::X509::Certificate.new(MOCK.pki[:root_pem]))
+    store.verify(OpenSSL::X509::Certificate.new(MOCK.leaf_pem('shop.example.com')), [OpenSSL::X509::Certificate.new(MOCK.pki[:intermediate_pem])])
   end
 
   check.call('decrypt MRI envelope (AES-256-GCM + AAD)') { CRYPTO.decrypt(f['envelope'], secret, aad: AAD) == f['leaf_key'] }

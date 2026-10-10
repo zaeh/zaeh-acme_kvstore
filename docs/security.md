@@ -191,6 +191,13 @@ certificates (the worker writes `ca_certificates` world-readable), but
 adding a CA to them is a trust decision: keep the bundle to the CAs that
 are actually needed.
 
+## Mock mode of `acme_kvstore::deploy`
+
+`mock => true` (or `acme_kvstore::deploy::mock` in Hiera) writes fake
+certificates signed by the mock PKI in `files/mock`, whose private keys are
+public. Use it only in test environments; enable the Hiera key only at a
+Hiera level that cannot reach production nodes.
+
 ## DNS API credentials on the worker
 
 acme.sh hooks commonly save their credentials in plain text in acme.sh's
