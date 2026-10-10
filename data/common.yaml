@@ -31,6 +31,7 @@ acme_kvstore::ca_profiles:
   letsencrypt: {}
   letsencrypt_test: {}
 acme_kvstore::default_ca_profile: 'letsencrypt'
+acme_kvstore::ca_bundle_include_system: false
 acme_kvstore::ca_whitelist:
   - 'letsencrypt'
   - 'letsencrypt_test'
@@ -61,3 +62,5 @@ acme_kvstore::worker::acme_log_file: '/var/log/acme.sh/acme.log'
 acme_kvstore::worker::acme_log_level: 1
 acme_kvstore::worker::manage_log_dir: true
 acme_kvstore::worker::config_dir: '/etc/acme_kvstore'
+# The OS trust store as one PEM file (Debian/Ubuntu; RedHat: data/os/RedHat.yaml).
+acme_kvstore::worker::system_ca_bundle: '/etc/ssl/certs/ca-certificates.crt'

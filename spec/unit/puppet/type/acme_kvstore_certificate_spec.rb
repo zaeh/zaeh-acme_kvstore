@@ -33,6 +33,12 @@ describe Puppet::Type.type(:acme_kvstore_certificate) do
     end.to raise_error(Puppet::Error, %r{certid})
   end
 
+  it 'defaults ca_bundles to none and accepts absolute paths only' do
+    expect(described_class.new(base_params)[:ca_bundles]).to eq([])
+    expect(described_class.new(base_params.merge(ca_bundles: ['/etc/a.pem', '/etc/b.pem']))[:ca_bundles]).to eq(['/etc/a.pem', '/etc/b.pem'])
+    expect { described_class.new(base_params.merge(ca_bundles: ['/etc/a.pem', 'b.pem'])) }.to raise_error(Puppet::Error, %r{ca_bundles must be absolute paths, not 'b.pem'})
+  end
+
   it 'rejects an empty domains list' do
     expect do
       described_class.new(base_params.merge(domains: []))

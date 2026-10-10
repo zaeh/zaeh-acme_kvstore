@@ -306,6 +306,13 @@ warns. OpenVox 9 is deliberately not covered there (build time); its server JRub
   (`forget_saved_settings`); the path follows acme.sh: `LE_CONFIG_HOME`, else `LE_WORKING_DIR`, else
   `$HOME/.acme.sh`. With a non-root worker `HOME` is `worker::home`, so the file used at run time is
   `<home>/.acme.sh/account.conf` (the one `--install` writes into `<home>` is not read).
+- **`--ca-bundle` is overridden by a saved `CA_BUNDLE`**: acme.sh applies the flag while parsing the
+  command line, but `_initpath` sources `account.conf` afterwards and acme.sh saves `CA_BUNDLE`
+  there after each issuance. With profile CA certificates, `Acmesh.run_acmesh` therefore removes
+  `CA_BUNDLE`/`CA_PATH` from that file around the registration and the issuance. The bundle
+  replaces the trust store for the DNS hook too, so CA and DNS profiles both have
+  `ca_certificates`/`ca_bundle`; `certificate.pp` lists them (plus the OS store with
+  `ca_bundle_include_system`) and `Acmesh.join_ca_bundles` joins them per run.
 - **acme.sh installation** (`git` via vcsrepo, `archive` via a checksum-verified `file` download plus
   `tar --strip-components=1`, or `package`): the install exec has no `creates` but an `unless`
   comparing the `VER=` lines of source and installed script, so a changed `acme_version` is

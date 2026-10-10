@@ -388,6 +388,78 @@ describe PuppetX::AcmeKvstore::Acmesh do
     end
   end
 
+  describe 'ca_bundles' do
+    let(:home) { Dir.mktmpdir('acme_kvstore-spec') }
+
+    def conf = File.join(home, '.acme.sh', 'account.conf')
+
+    def bundle(name, content) = File.join(home, name).tap { |path| File.write(path, content) }
+
+    before do
+      allow(described_class).to receive(:account_conf_path).and_call_original
+      FileUtils.mkdir_p(File.dirname(conf))
+      File.write(conf, "CA_BUNDLE='/old/bundle.pem'\nCA_PATH='/old/certs'\nAUTO_UPGRADE='0'\n")
+    end
+
+    after { FileUtils.rm_rf(home) }
+
+    # Records each start: the command, account.conf and the --ca-bundle file
+    # content; then saves CA_BUNDLE like acme.sh.
+    def stub_acmesh(runs)
+      allow(Open3).to receive(:popen3) do |*args, &block|
+        args.pop if args.last.is_a?(Hash)
+        file = args.each_cons(2).find { |flag, _| flag == '--ca-bundle' }&.last
+        runs << { cmd: args, conf: File.read(conf), bundle: file && File.read(file) }
+        File.write(conf, "CA_BUNDLE='#{file}'\n", mode: 'a')
+        block.call(instance_double(IO, close: nil), StringIO.new(''), StringIO.new(''), FakeWaitThr.new(pid: 1, status: success))
+      end
+    end
+
+    it 'passes a single file as it is to the account registration and the issuance' do
+      runs = []
+      stub_acmesh(runs)
+      ca = bundle('ca.pem', "CA\n")
+      described_class.issue_or_renew(**base_args, account_email: 'pki@example.com', run_as_home: home, ca_bundles: [ca])
+
+      expect(runs.map { |run| run[:cmd][2] }).to eq(['--register-account', '--issue'])
+      runs.each { |run| expect(run[:cmd].each_cons(2)).to include(['--ca-bundle', ca]) }
+    end
+
+    it 'joins several files (e.g. CA profile and DNS profile) into one bundle for both runs' do
+      runs = []
+      stub_acmesh(runs)
+      described_class.issue_or_renew(**base_args, account_email: 'pki@example.com', run_as_home: home,
+                                                  ca_bundles: [bundle('ca.pem', "CA\n\n"), bundle('dns.pem', 'DNS')])
+
+      expect(runs.map { |run| run[:bundle] }).to eq(%W[CA\nDNS\n CA\nDNS\n])
+    end
+
+    it 'runs without a saved CA_BUNDLE/CA_PATH (they would override --ca-bundle) and leaves none behind' do
+      runs = []
+      stub_acmesh(runs)
+      described_class.issue_or_renew(**base_args, account_email: 'pki@example.com', run_as_home: home, ca_bundles: [bundle('ca.pem', "CA\n")])
+
+      runs.each { |run| expect(run[:conf]).not_to match(%r{^CA_(BUNDLE|PATH)=}) }
+      expect(File.read(conf)).to eq("AUTO_UPGRADE='0'\n")
+    end
+
+    it 'raises a clear error for a missing file instead of starting acme.sh' do
+      expect(Open3).not_to receive(:popen3)
+
+      expect { described_class.issue_or_renew(**base_args, run_as_home: home, ca_bundles: ['/nonexistent/ca.pem']) }
+        .to raise_error(described_class::Error, %r{CA bundle\(s\) not found: /nonexistent/ca.pem})
+    end
+
+    it 'leaves a CA_BUNDLE set by hand alone without ca_bundles' do
+      runs = []
+      stub_acmesh(runs)
+      described_class.issue_or_renew(**base_args, run_as_home: home)
+
+      expect(runs.first[:cmd]).not_to include('--ca-bundle')
+      expect(File.read(conf)).to start_with("CA_BUNDLE='/old/bundle.pem'\nCA_PATH='/old/certs'\n")
+    end
+  end
+
   describe '.run_posthook' do
     it 'runs the given command and raises on failure' do
       failure = instance_double(Process::Status, success?: false, exitstatus: 1)

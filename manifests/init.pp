@@ -17,6 +17,9 @@
 #   workers; DNS profiles use it via their hook. See docs/profiles.md.
 # @param ca_profiles CAs with their account data; includes 'letsencrypt' and 'letsencrypt_test'. See docs/profiles.md.
 # @param ca_whitelist CA profiles certificates may actually use.
+# @param ca_bundle_include_system
+#   Whether the worker's system trust store is added when CA or DNS profiles
+#   bring CA certificates (which otherwise replace it for acme.sh).
 # @param default_ca_profile CA profile used when a certificate names none; must be whitelisted.
 # @param renew_before_days Default: renew when fewer days than this remain.
 # @param purge_key_on_mismatch Default: whether a changed key_type/key_size forces an immediate reissue.
@@ -55,6 +58,7 @@ class acme_kvstore (
   Hash[Pattern[/\Adns_[a-z0-9_]+\z/], Acme_kvstore::Dnsapi_script] $dnsapi_scripts,
   Hash[String[1], Acme_kvstore::Ca_profile]                        $ca_profiles,
   Array[String[1]]                                                 $ca_whitelist,
+  Boolean                                                          $ca_bundle_include_system,
   String[1]                                                        $default_ca_profile,
 
   # Defaults of the certificates
@@ -117,6 +121,16 @@ class acme_kvstore (
   }
   unless $ca_profiles[$default_ca_profile] {
     fail("acme_kvstore: \$default_ca_profile '${default_ca_profile}' is not a key in \$ca_profiles")
+  }
+
+  # CA certificates come either as PEM or as a file, never both.
+  [['CA', $ca_profiles], ['DNS', $dns_profiles]].each |$kind| {
+    $profiles_with_both = $kind[1].filter |$profile_name, $profile| {
+      $profile['ca_certificates'] =~ NotUndef and $profile['ca_bundle'] =~ NotUndef
+    }.keys
+    unless empty($profiles_with_both) {
+      fail("acme_kvstore: ${kind[0]} profile(s) ${profiles_with_both.join(', ')} set both 'ca_certificates' and 'ca_bundle'; use one of them")
+    }
   }
 
   # A whitelisted CA without profile could never be used - fail early.

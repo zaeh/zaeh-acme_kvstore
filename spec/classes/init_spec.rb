@@ -87,6 +87,39 @@ describe 'acme_kvstore' do
         it { is_expected.to compile.and_raise_error(%r{not a key in \$ca_profiles}) }
       end
 
+      context 'with a CA profile that sets both ca_certificates and ca_bundle' do
+        let(:params) do
+          {
+            'consul'      => { 'url' => 'https://consul.example.com:8501' },
+            'areas'       => { 'web' => { 'secret' => 'S' * 32, 'consul_token' => 'web-token' } },
+            'ca_profiles' => {
+              'letsencrypt' => {},
+              'letsencrypt_test' => {},
+              'stepca' => { 'directory_url' => 'https://ca.example.com/acme/acme/directory',
+                            'ca_certificates' => "-----BEGIN CERTIFICATE-----\nMIIB\n-----END CERTIFICATE-----\n",
+                            'ca_bundle' => '/etc/pki/internal-ca.pem', },
+            },
+          }
+        end
+
+        it { is_expected.to compile.and_raise_error(%r{CA profile\(s\) stepca set both 'ca_certificates' and 'ca_bundle'}) }
+      end
+
+      context 'with a DNS profile that sets both ca_certificates and ca_bundle' do
+        let(:params) do
+          {
+            'consul'       => { 'url' => 'https://consul.example.com:8501' },
+            'areas'        => { 'web' => { 'secret' => 'S' * 32, 'consul_token' => 'web-token' } },
+            'dns_profiles' => {
+              'infoblox' => { 'hook' => 'dns_infoblox', 'ca_bundle' => '/etc/pki/infoblox-ca.pem',
+                              'ca_certificates' => "-----BEGIN CERTIFICATE-----\nMIIB\n-----END CERTIFICATE-----\n", },
+            },
+          }
+        end
+
+        it { is_expected.to compile.and_raise_error(%r{DNS profile\(s\) infoblox set both 'ca_certificates' and 'ca_bundle'}) }
+      end
+
       context 'with a ca_whitelist entry that has no matching ca_profiles entry' do
         let(:params) do
           {

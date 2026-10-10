@@ -56,6 +56,8 @@ class { 'acme_kvstore':
 | `options` | no | Extra, hook-specific settings (values may be `Sensitive`). `dnssleep` overrides `$acme_kvstore::dnssleep` for this profile (see [`dnssleep`](#dnssleep)); for `dns_nsupdate`, `nsupdate_id`/`nsupdate_type`/`nsupdate_key` become a TSIG key file (see [nsupdate](#nsupdate-bind-tsig-keys)); every other key is upper-cased into an environment variable (e.g. `nsupdate_zone` becomes `NSUPDATE_ZONE`), matching the convention most acme.sh DNS hooks use. |
 | `challenge_alias` | no | See [DNS alias mode](#dns-alias-mode) below. |
 | `domain_alias` | no | See [DNS alias mode](#dns-alias-mode) below. |
+| `ca_certificates` | no | CA certificates (PEM, one or more) of the DNS API's TLS certificate, e.g. of an internal Infoblox. Not together with `ca_bundle`. See [CA certificates](#ca-certificates-for-private-cas-and-dns-apis). |
+| `ca_bundle` | no | The same as a file that is already on the worker (absolute path). Not together with `ca_certificates`. |
 
 Many acme.sh hooks save their settings in acme.sh's `account.conf`
 (`_saveaccountconf`), and acme.sh reads that file on every start, so a
@@ -209,6 +211,8 @@ class { 'acme_kvstore':
 | `directory_url` | no | The CA's ACME directory URL. Omit it for any of acme.sh's built-in aliases (`letsencrypt`, `letsencrypt_test`, `zerossl`, `buypass`, `sslcom`, `google`, `googletest`, `acmeca`, `actalis`) - the profile's own name is then used as that alias, so name a custom profile exactly as you'd pass it to `acme.sh --server`. Set it for a private/internal CA such as [step-ca](https://smallstep.com/docs/step-ca/). |
 | `account_email` | no | Registered once per CA via `acme.sh --register-account -m <email>` before the first certificate under that profile is issued. |
 | `eab_kid` / `eab_hmac_key` | no | External Account Binding credentials, required by some CAs (ZeroSSL, SSL.com, Google Public CA) - see each CA's page on the [acme.sh wiki](https://github.com/acmesh-official/acme.sh/wiki) for how to obtain them. |
+| `ca_certificates` | no | CA certificates (PEM, one or more) of the CA's TLS certificate, e.g. the root of a private [step-ca](https://smallstep.com/docs/step-ca/). Not together with `ca_bundle`. See [CA certificates](#ca-certificates-for-private-cas-and-dns-apis). |
+| `ca_bundle` | no | The same as a file that is already on the worker (absolute path), e.g. a company CA bundle. Not together with `ca_certificates`. |
 
 A certificate picks a CA profile with `use_ca_profile`, defaulting to
 `$acme_kvstore::default_ca_profile`:
@@ -219,6 +223,44 @@ acme_kvstore::certificate { 'shop-example-com':
   domain         => 'shop.example.com',
   use_ca_profile => 'zerossl', # optional - otherwise $default_ca_profile
 }
+```
+
+### CA certificates for private CAs and DNS APIs
+
+acme.sh trusts the system trust store of the worker. For a private CA or
+an internal DNS API, give their CA certificates in the CA profile and the
+DNS profile instead - as PEM (`ca_certificates`, written by the worker to
+`<config_dir>/ca/ca-<profile>.pem` or `dns-<profile>.pem`) or as a file
+already on the worker (`ca_bundle`).
+
+For each certificate, the worker joins the CA certificates of its CA
+profile and of its DNS profile into **one** bundle and passes it to acme.sh
+(`--ca-bundle`) for the account registration and the issuance. That bundle
+**replaces** the system trust store for every HTTPS request acme.sh makes,
+the DNS hook's included. If one side uses a public certificate - e.g. a
+private step-ca with Cloudflare's DNS API - set
+`acme_kvstore::ca_bundle_include_system: true` (default `false`) to add the
+system trust store (`acme_kvstore::worker::system_ca_bundle`, by OS family).
+Without any profile CA certificates, acme.sh keeps using the system store as
+it is.
+
+acme.sh saves the bundle in its `account.conf`; the worker removes it again
+around each run, so it never affects certificates of other profiles.
+
+```yaml
+acme_kvstore::ca_profiles:
+  stepca:
+    directory_url: 'https://stepca.example.com:9000/acme/acme/directory'
+    ca_certificates: |
+      -----BEGIN CERTIFICATE-----
+      ...root of step-ca...
+      -----END CERTIFICATE-----
+acme_kvstore::dns_profiles:
+  infoblox:
+    hook: 'dns_infoblox'
+    env:
+      Infoblox_Server: 'infoblox.example.com'
+    ca_bundle: '/etc/pki/infoblox-ca.pem'   # a file already on the worker
 ```
 
 ### `ca_whitelist`

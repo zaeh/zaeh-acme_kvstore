@@ -182,6 +182,15 @@ using profile's `env` - including its DNS API credentials. Treat it like
 elsewhere at run time. It is installed `root:<group>` mode `0640`, so the
 acme.sh user can read but never modify it.
 
+## CA certificates in CA profiles
+
+`ca_certificates`/`ca_bundle` of CA and DNS profiles decide which servers
+acme.sh trusts - for the CA and for the DNS API; by default
+(`ca_bundle_include_system: false`) nothing else. They are public
+certificates (the worker writes `ca_certificates` world-readable), but
+adding a CA to them is a trust decision: keep the bundle to the CAs that
+are actually needed.
+
 ## DNS API credentials on the worker
 
 acme.sh hooks commonly save their credentials in plain text in acme.sh's

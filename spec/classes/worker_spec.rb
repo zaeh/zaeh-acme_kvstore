@@ -99,6 +99,41 @@ describe 'acme_kvstore::worker' do
         end
       end
 
+      context 'with CA and DNS profiles giving CA certificates as PEM or as a file' do
+        let(:pem) { "-----BEGIN CERTIFICATE-----\nMIIB\n-----END CERTIFICATE-----\n" }
+        let(:pre_condition) do
+          <<~PUPPET
+            class { 'acme_kvstore':
+              backend     => 'consul',
+              consul      => { 'url' => 'https://consul.example.com:8501' },
+              areas       => { 'web' => { 'secret' => '#{'S' * 32}', 'consul_token' => 'web-token' } },
+              ca_profiles => {
+                'letsencrypt'      => {},
+                'letsencrypt_test' => {},
+                'step ca'          => { 'directory_url' => 'https://ca.example.com/acme/acme/directory', 'ca_certificates' => #{pem.inspect} },
+                'corp'             => { 'directory_url' => 'https://acme.example.com/directory', 'ca_bundle' => '/etc/pki/corp.pem' },
+              },
+              dns_profiles => {
+                'infoblox' => { 'hook' => 'dns_infoblox', 'ca_certificates' => #{pem.inspect} },
+                'route53'  => { 'hook' => 'dns_aws' },
+              },
+            }
+          PUPPET
+        end
+
+        it { is_expected.to compile.with_all_deps }
+        it { is_expected.to contain_file('/etc/acme_kvstore/ca').with(ensure: 'directory', owner: 'root', mode: '0755') }
+
+        it 'writes the PEM to a file-safe name, readable by the acme.sh user' do
+          is_expected.to contain_file('/etc/acme_kvstore/ca/ca-step_ca.pem').with(owner: 'root', mode: '0644', content: pem)
+        end
+
+        it { is_expected.to contain_file('/etc/acme_kvstore/ca/dns-infoblox.pem').with(owner: 'root', mode: '0644', content: pem) }
+        it { is_expected.not_to contain_file('/etc/acme_kvstore/ca/dns-route53.pem') }
+
+        it { is_expected.not_to contain_file('/etc/pki/corp.pem') }
+      end
+
       context 'with manage_gems => true' do
         let(:params) { { 'manage_gems' => true } }
 

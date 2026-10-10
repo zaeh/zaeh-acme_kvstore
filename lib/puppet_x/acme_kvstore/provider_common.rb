@@ -74,6 +74,7 @@ module PuppetX::AcmeKvstore
         run_as_group: resource[:run_as_group],
         run_as_home: resource[:run_as_home],
         acmesh_path: resource[:acmesh_path],
+        ca_bundles: resource[:ca_bundles],
       )
       raise Puppet::Error, "acme.sh did not return a certificate for '#{certid}'" if result[:cert].nil?
 
