@@ -62,8 +62,15 @@ module PuppetX::AcmeKvstore
           dnssleep:, webroot:
         ) + log_args
         env = build_env(dns_env, dns_options, proxy, run_as_home)
+        account_conf = account_conf_path(env['HOME'])
+        managed_keys = env.keys - ['HOME']
 
-        _out, err, status = run_with_timeout(env, cmd, timeout:, run_as_user:, run_as_group:)
+        forget_saved_settings(account_conf, managed_keys)
+        begin
+          _out, err, status = run_with_timeout(env, cmd, timeout:, run_as_user:, run_as_group:)
+        ensure
+          forget_saved_settings(account_conf, managed_keys)
+        end
 
         raise Error, "acme.sh failed (exit #{status.exitstatus}):\n#{err}" unless status.success? || status.exitstatus == RENEW_NOT_DUE
 
@@ -216,6 +223,27 @@ module PuppetX::AcmeKvstore
       false
     end
 
+    # Where acme.sh keeps account.conf: LE_CONFIG_HOME, else LE_WORKING_DIR,
+    # else $HOME/.acme.sh (acme.sh 3.0.9, __initHome).
+    def self.account_conf_path(home)
+      config_home = %w[LE_CONFIG_HOME LE_WORKING_DIR].map { |var| ENV.fetch(var, nil) }.find { |dir| dir && !dir.empty? }
+      config_home ||= File.join(home || Dir.home, '.acme.sh')
+      File.join(config_home, 'account.conf')
+    end
+
+    # acme.sh sources account.conf on every start, so values a DNS hook saved
+    # there (_saveaccountconf) would override the ones passed from Hiera, and
+    # stay on disk in plain text. Removes them (and their SAVED_ variants)
+    # for the keys this module passes; other settings stay.
+    def self.forget_saved_settings(path, keys)
+      return if keys.empty? || !File.file?(path)
+
+      pattern = %r{\A(?:SAVED_)?(?:#{keys.map { |key| Regexp.escape(key) }.join('|')}) *=}
+      lines = File.readlines(path)
+      kept = lines.grep_v(pattern)
+      File.write(path, kept.join) unless kept.size == lines.size
+    end
+
     def self.read_if_present(path)
       File.exist?(path) ? File.read(path) : nil
     end
@@ -232,6 +260,7 @@ module PuppetX::AcmeKvstore
     end
 
     private_class_method :build_command, :key_length_args, :log_args, :build_env, :read_if_present, :chown_to_run_as_user,
-                         :ensure_account_registered, :run_with_timeout, :terminate, :process_alive?
+                         :ensure_account_registered, :run_with_timeout, :terminate, :process_alive?,
+                         :account_conf_path, :forget_saved_settings
   end
 end

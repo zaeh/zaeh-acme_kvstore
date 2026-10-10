@@ -89,6 +89,24 @@ require_relative 'acceptance_helper'
       expect(meta).to include('status' => 'active', 'active_version' => 1)
     end
 
+    # A DNS hook that, like dns_infoblox, saves its setting in account.conf
+    # (_saveaccountconf); Pebble accepts DNS-01 without a record.
+    it 'passes the configured DNS hook settings every time, even after the hook saved older ones' do
+      seen = File.join(AcceptanceEnv.workdir, "seen-#{certid}")
+      hook = File.join(File.dirname(AcceptanceEnv.acmesh_path), 'dnsapi', 'dns_acceptance.sh')
+      File.write(hook, <<~SH)
+        dns_acceptance_add() { echo "$ACCEPTANCE_VALUE" >>"$ACCEPTANCE_SEEN"; _saveaccountconf ACCEPTANCE_VALUE "$ACCEPTANCE_VALUE"; }
+        dns_acceptance_rm() { return 0; }
+      SH
+      dns = ->(value) { { dns_provider: 'dns_acceptance', dnssleep: 1, dns_env: { 'ACCEPTANCE_VALUE' => value, 'ACCEPTANCE_SEEN' => seen } } }
+
+      provider(**dns.call('first')).create
+      provider(**dns.call('second'), renew_before_days: 3650).create
+
+      expect(File.readlines(seen, chomp: true)).to eq(%w[first second])
+      expect(File.read(File.join(AcceptanceEnv.workdir, 'home', '.acme.sh', 'account.conf'))).not_to include('ACCEPTANCE_')
+    end
+
     it 'stores no issuer entries with store_issuers => false' do
       provider(store_issuers: false).create
       expect(read("web/certids/#{certid}")['acme_renewal']).not_to have_key('issuers')

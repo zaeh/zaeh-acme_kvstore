@@ -182,6 +182,15 @@ using profile's `env` - including its DNS API credentials. Treat it like
 elsewhere at run time. It is installed `root:<group>` mode `0640`, so the
 acme.sh user can read but never modify it.
 
+## DNS API credentials on the worker
+
+acme.sh hooks commonly save their credentials in plain text in acme.sh's
+`account.conf`. The worker removes the keys of the DNS profile in use from
+that file before and after each acme.sh run (see
+[profiles.md](profiles.md#dns-profiles)), so they are only on disk while
+acme.sh runs. Entries saved before this behaviour existed, or by profiles no
+longer used, stay until that profile runs again; remove them by hand.
+
 ## acme.sh log file
 
 `acme_kvstore::worker`'s `acme_log_file` (default

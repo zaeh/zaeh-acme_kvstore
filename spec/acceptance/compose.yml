@@ -32,6 +32,8 @@ services:
     environment:
       PEBBLE_VA_ALWAYS_VALID: '1'
       PEBBLE_VA_NOSLEEP: '1'
+      # Validate every order; reused authorizations would skip the challenge.
+      PEBBLE_AUTHZREUSE: '0'
     ports:
       - 127.0.0.1:14000:14000
       - 127.0.0.1:15000:15000
