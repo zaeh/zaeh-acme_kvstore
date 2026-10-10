@@ -32,6 +32,10 @@
 # @param area_secret The area's secret; only needed to write a key.
 # @param backend KV backend.
 # @param backend_config Connection details including 'prefix' and credentials; used as given.
+# @param mock
+#   Write a fake certificate instead of reading the KV store, for tests (no
+#   Consul/Redis access, no area configuration needed); undef: the Hiera key
+#   acme_kvstore::deploy::mock (default false). See docs/lookup_cert.md.
 define acme_kvstore::deploy (
   # Files to write
   Stdlib::Absolutepath                  $cert_path,
@@ -59,66 +63,80 @@ define acme_kvstore::deploy (
   Optional[Acme_kvstore::Secret]        $area_secret         = undef,
   Optional[Enum['consul', 'redis']]     $backend             = undef,
   Optional[Hash]                        $backend_config      = undef,
+
+  # Tests
+  Optional[Boolean]                     $mock                = undef,
 ) {
   # Deliberately no `include acme_kvstore` - see the description above.
-  $real_area = $area ? {
-    undef   => lookup('acme_kvstore::default_area', Optional[Acme_kvstore::Area_name], 'first', undef),
-    default => $area,
-  }
-  if !$real_area {
-    fail("acme_kvstore::deploy[${title}]: no 'area' given and no acme_kvstore::default_area in Hiera")
-  }
-
   $decrypt_key = $key_path =~ NotUndef or $combined_path =~ NotUndef
-  $needs_area_config = ($decrypt_key and $area_secret =~ Undef) or $backend_config =~ Undef
-  $area_config = $needs_area_config ? {
-    true    => lookup('acme_kvstore::areas', Hash[Acme_kvstore::Area_name, Acme_kvstore::Area], 'deep', {})[$real_area],
-    default => undef,
-  }
-
-  if !$decrypt_key {
-    $area_secret_plain = undef
-  } elsif $area_secret =~ NotUndef {
-    $area_secret_plain = acme_kvstore::unwrap_if_sensitive($area_secret)
-  } elsif $area_config {
-    $area_secret_plain = acme_kvstore::unwrap_if_sensitive($area_config['secret'])
-  } else {
-    fail("acme_kvstore::deploy[${title}]: no 'area_secret' given and area '${real_area}' not found in acme_kvstore::areas in Hiera")
-  }
-
-  $real_backend = $backend ? {
-    undef   => lookup('acme_kvstore::backend', Enum['consul', 'redis']),
-    default => $backend,
-  }
-  if $backend_config =~ NotUndef {
-    $real_backend_config = $backend_config
-  } else {
-    # The area's read-only credentials; deploy never uses the worker's.
-    if $real_backend == 'consul' {
-      if !$area_config or !$area_config['consul_read_token'] {
-        fail("acme_kvstore::deploy[${title}]: no 'backend_config' given and area '${real_area}' has no 'consul_read_token' in acme_kvstore::areas in Hiera")
-      }
-      $area_credentials = { 'token' => acme_kvstore::unwrap_if_sensitive($area_config['consul_read_token']) }
-    } else {
-      if !$area_config or !$area_config['redis_read_username'] or !$area_config['redis_read_password'] {
-        fail("acme_kvstore::deploy[${title}]: no 'backend_config' given and area '${real_area}' has no 'redis_read_username'/'redis_read_password' in acme_kvstore::areas in Hiera")
-      }
-      $area_credentials = {
-        'username' => $area_config['redis_read_username'],
-        'password' => acme_kvstore::unwrap_if_sensitive($area_config['redis_read_password']),
-      }
-    }
-    $backend_type = $real_backend ? { 'consul' => Acme_kvstore::Consul_config, default => Acme_kvstore::Redis_config }
-    $backend_defaults = lookup("acme_kvstore::${real_backend}", $backend_type, 'deep', {})
-    $set_area_credentials = $area_credentials.filter |$key, $value| { $value =~ NotUndef }
-    $real_backend_config = $backend_defaults + $set_area_credentials + { 'prefix' => lookup('acme_kvstore::prefix', String[1]) }
-  }
-
   # The chain is only searched for when a file needs it.
   $include_chain = $chain_path =~ NotUndef or $fullchain_path =~ NotUndef or $combined_path =~ NotUndef
-  $cert = acme_kvstore::lookup_cert(
-    $certid, $real_area, $real_backend, $real_backend_config, $area_secret_plain, $decrypt_key, $include_chain, $chain_include_root
-  )
+  $real_mock = $mock ? {
+    undef   => lookup('acme_kvstore::deploy::mock', Boolean, 'first', false),
+    default => $mock,
+  }
+
+  if $real_mock {
+    # A notice on the compiler, not a warning on the node.
+    notice("acme_kvstore::deploy[${title}]: mock mode, writing a fake certificate for '${certid}' - never for production")
+    $cert = acme_kvstore::mock_cert($certid, $decrypt_key, $include_chain, $chain_include_root)
+  } else {
+    $real_area = $area ? {
+      undef   => lookup('acme_kvstore::default_area', Optional[Acme_kvstore::Area_name], 'first', undef),
+      default => $area,
+    }
+    if !$real_area {
+      fail("acme_kvstore::deploy[${title}]: no 'area' given and no acme_kvstore::default_area in Hiera")
+    }
+
+    $needs_area_config = ($decrypt_key and $area_secret =~ Undef) or $backend_config =~ Undef
+    $area_config = $needs_area_config ? {
+      true    => lookup('acme_kvstore::areas', Hash[Acme_kvstore::Area_name, Acme_kvstore::Area], 'deep', {})[$real_area],
+      default => undef,
+    }
+
+    if !$decrypt_key {
+      $area_secret_plain = undef
+    } elsif $area_secret =~ NotUndef {
+      $area_secret_plain = acme_kvstore::unwrap_if_sensitive($area_secret)
+    } elsif $area_config {
+      $area_secret_plain = acme_kvstore::unwrap_if_sensitive($area_config['secret'])
+    } else {
+      fail("acme_kvstore::deploy[${title}]: no 'area_secret' given and area '${real_area}' not found in acme_kvstore::areas in Hiera")
+    }
+
+    $real_backend = $backend ? {
+      undef   => lookup('acme_kvstore::backend', Enum['consul', 'redis']),
+      default => $backend,
+    }
+    if $backend_config =~ NotUndef {
+      $real_backend_config = $backend_config
+    } else {
+      # The area's read-only credentials; deploy never uses the worker's.
+      if $real_backend == 'consul' {
+        if !$area_config or !$area_config['consul_read_token'] {
+          fail("acme_kvstore::deploy[${title}]: no 'backend_config' given and area '${real_area}' has no 'consul_read_token' in acme_kvstore::areas in Hiera")
+        }
+        $area_credentials = { 'token' => acme_kvstore::unwrap_if_sensitive($area_config['consul_read_token']) }
+      } else {
+        if !$area_config or !$area_config['redis_read_username'] or !$area_config['redis_read_password'] {
+          fail("acme_kvstore::deploy[${title}]: no 'backend_config' given and area '${real_area}' has no 'redis_read_username'/'redis_read_password' in acme_kvstore::areas in Hiera")
+        }
+        $area_credentials = {
+          'username' => $area_config['redis_read_username'],
+          'password' => acme_kvstore::unwrap_if_sensitive($area_config['redis_read_password']),
+        }
+      }
+      $backend_type = $real_backend ? { 'consul' => Acme_kvstore::Consul_config, default => Acme_kvstore::Redis_config }
+      $backend_defaults = lookup("acme_kvstore::${real_backend}", $backend_type, 'deep', {})
+      $set_area_credentials = $area_credentials.filter |$key, $value| { $value =~ NotUndef }
+      $real_backend_config = $backend_defaults + $set_area_credentials + { 'prefix' => lookup('acme_kvstore::prefix', String[1]) }
+    }
+
+    $cert = acme_kvstore::lookup_cert(
+      $certid, $real_area, $real_backend, $real_backend_config, $area_secret_plain, $decrypt_key, $include_chain, $chain_include_root
+    )
+  }
 
   $notify_resources = $notify_services.map |$service_name| { Service[$service_name] }
 

@@ -49,6 +49,9 @@ Initial development version, not released yet.
   (`ca_certificates` as PEM, or `ca_bundle` as a file on the worker), e.g.
   for a private step-ca or an internal DNS API; joined per certificate, with
   the system trust store only on request (`ca_bundle_include_system`).
+- `acme_kvstore::deploy` mock mode (`mock`, or `acme_kvstore::deploy::mock`
+  in Hiera) for tests: no KV access, a stable fake certificate per certid
+  from a mock PKI valid until 2099; also as `acme_kvstore::mock_cert`.
 - Typed parameters (`types/`), defaults in module Hiera data with
   deep-merged hashes.
 - Tests: rspec-puppet/RuboCop/puppet-lint via voxpupuli-test on OpenVox 8

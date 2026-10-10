@@ -1,0 +1,2 @@
+---
+acme_kvstore::deploy::mock: true

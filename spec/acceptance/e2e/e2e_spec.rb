@@ -82,6 +82,20 @@ describe 'acme_kvstore end to end (OpenVox server, ACME worker, consumer)', orde
     end
   end
 
+  it "writes deploy's mock certificate, compiled under the server's JRuby" do
+    cert = OpenSSL::X509::Certificate.new(E2eEnv.node_exec('consumer', 'cat', "#{E2eEnv::MOCK_DIR}/cert.pem"))
+    fullchain = certs(E2eEnv.node_exec('consumer', 'cat', "#{E2eEnv::MOCK_DIR}/fullchain.pem"))
+    root = OpenSSL::X509::Certificate.new(File.read(File.expand_path('../../../files/mock/root.pem', __dir__)))
+    store = OpenSSL::X509::Store.new
+    store.add_cert(root)
+
+    expect(cert.subject.to_a.assoc('CN')[1]).to eq('e2e-mock')
+    expect(store.verify(cert, fullchain.drop(1))).to be(true)
+    expect(cert.check_private_key(OpenSSL::PKey.read(E2eEnv.node_exec('consumer', 'cat', "#{E2eEnv::MOCK_DIR}/key.pem")))).to be(true)
+    # The same certificate as MRI builds: deterministic on the server too.
+    expect(cert.to_pem).to eq(PuppetX::AcmeKvstore::MockCert.leaf_pem('e2e-mock'))
+  end
+
   it 'changes nothing on the second consumer run' do
     run_agent('consumer', 0)
   end

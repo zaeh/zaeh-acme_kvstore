@@ -4,6 +4,7 @@ require 'spec_helper'
 require 'puppet_x/acme_kvstore/cert_lookup'
 require 'puppet_x/acme_kvstore/consul_client'
 require 'puppet_x/acme_kvstore/redis_client'
+require 'puppet_x/acme_kvstore/mock_cert'
 
 describe 'acme_kvstore::deploy' do
   on_supported_os.each do |os, os_facts|
@@ -17,6 +18,40 @@ describe 'acme_kvstore::deploy' do
       before do
         allow(PuppetX::AcmeKvstore::ConsulClient).to receive(:new)
           .and_return(instance_double(PuppetX::AcmeKvstore::ConsulClient))
+      end
+
+      context 'in mock mode' do
+        let(:title) { 'shop-mock' }
+        let(:params) do
+          { 'mock' => true, 'area' => 'does_not_exist', 'cert_path' => '/etc/ssl/certs/shop.pem', 'key_path' => '/etc/ssl/private/shop.key',
+            'fullchain_path' => '/etc/ssl/certs/shop-fullchain.pem', 'chain_include_root' => true, }
+        end
+        let(:mock) { PuppetX::AcmeKvstore::MockCert.lookup(certid: 'shop-mock', decrypt_key: true, include_chain: true, include_root: true) }
+
+        it { is_expected.to compile.with_all_deps }
+        it { is_expected.to contain_file('/etc/ssl/certs/shop.pem').with_content(mock[:pem]) }
+        it { is_expected.to contain_file('/etc/ssl/private/shop.key').with_mode('0600').with_content(sensitive(mock[:private_key])) }
+        it { is_expected.to contain_file('/etc/ssl/certs/shop-fullchain.pem').with_content(mock[:fullchain] + mock[:root]) }
+
+        # A title of its own, so the cached catalogue cannot bypass the expectations.
+        context 'checking that no KV store is read' do
+          let(:title) { 'shop-mock-no-kv' }
+
+          it 'neither builds a KV client nor looks anything up' do
+            expect(PuppetX::AcmeKvstore::CertLookup).not_to receive(:lookup)
+            expect(PuppetX::AcmeKvstore::ConsulClient).not_to receive(:new)
+            catalogue
+          end
+        end
+      end
+
+      context 'in mock mode switched on in Hiera, without any KV configuration' do
+        let(:title) { 'shop-mock-hiera' }
+        let(:hiera_config) { File.expand_path('../fixtures/hiera_mock/hiera.yaml', __dir__) }
+        let(:params) { { 'cert_path' => '/etc/ssl/certs/shop.pem' } }
+
+        it { is_expected.to compile.with_all_deps }
+        it { is_expected.to contain_file('/etc/ssl/certs/shop.pem').with_content(%r{BEGIN CERTIFICATE}) }
       end
 
       context 'with an active certificate and no key_path' do

@@ -24,6 +24,7 @@
 #### Public Functions
 
 * [`acme_kvstore::lookup_cert`](#acme_kvstore--lookup_cert): Looks up a certificate (and optionally its decrypted private key) stored by acme_kvstore, at catalog-compile time.
+* [`acme_kvstore::mock_cert`](#acme_kvstore--mock_cert): Returns a fake certificate in the shape of acme_kvstore::lookup_cert, for tests (acme_kvstore::deploy's mock mode).
 * [`acme_kvstore::request_cert`](#acme_kvstore--request_cert): Requests a certificate via acme.sh directly, without storing it in the KV store.
 
 #### Private Functions
@@ -764,6 +765,7 @@ The following parameters are available in the `acme_kvstore::deploy` defined typ
 * [`area_secret`](#-acme_kvstore--deploy--area_secret)
 * [`backend`](#-acme_kvstore--deploy--backend)
 * [`backend_config`](#-acme_kvstore--deploy--backend_config)
+* [`mock`](#-acme_kvstore--deploy--mock)
 
 ##### <a name="-acme_kvstore--deploy--cert_path"></a>`cert_path`
 
@@ -914,6 +916,16 @@ Default value: `undef`
 Data type: `Optional[Hash]`
 
 Connection details including 'prefix' and credentials; used as given.
+
+Default value: `undef`
+
+##### <a name="-acme_kvstore--deploy--mock"></a>`mock`
+
+Data type: `Optional[Boolean]`
+
+Write a fake certificate instead of reading the KV store, for tests (no
+Consul/Redis access, no area configuration needed); undef: the Hiera key
+acme_kvstore::deploy::mock (default false). See docs/lookup_cert.md.
 
 Default value: `undef`
 
@@ -1469,6 +1481,64 @@ Data type: `Optional[Boolean]`
 
 With include_chain: whether to also search the area for the root if the recorded chain does not end in
 one. Defaults to false.
+
+### <a name="acme_kvstore--mock_cert"></a>`acme_kvstore::mock_cert`
+
+Type: Ruby 4.x API
+
+No KV store is read. The leaf certificate (CN and, for a host name, SAN =
+certid) is signed by the fixed mock PKI in files/mock and is the same on
+every call; root and intermediate are valid until the end of 2099. The
+private key is publicly known: never use the result in production.
+
+#### Examples
+
+#####
+
+```puppet
+$cert = acme_kvstore::mock_cert('shop-example-com', true, true)
+```
+
+#### `acme_kvstore::mock_cert(String[1] $certid, Optional[Boolean] $decrypt_key, Optional[Boolean] $include_chain, Optional[Boolean] $include_root)`
+
+No KV store is read. The leaf certificate (CN and, for a host name, SAN =
+certid) is signed by the fixed mock PKI in files/mock and is the same on
+every call; root and intermediate are valid until the end of 2099. The
+private key is publicly known: never use the result in production.
+
+Returns: `Hash` A Hash with the same keys as acme_kvstore::lookup_cert; status is always 'active'.
+
+##### Examples
+
+######
+
+```puppet
+$cert = acme_kvstore::mock_cert('shop-example-com', true, true)
+```
+
+##### `certid`
+
+Data type: `String[1]`
+
+The certificate ID, used as the CN of the leaf.
+
+##### `decrypt_key`
+
+Data type: `Optional[Boolean]`
+
+Whether to return the (fake) private key.
+
+##### `include_chain`
+
+Data type: `Optional[Boolean]`
+
+Whether to return chain and fullchain.
+
+##### `include_root`
+
+Data type: `Optional[Boolean]`
+
+With include_chain: whether to return the mock root.
 
 ### <a name="acme_kvstore--request_cert"></a>`acme_kvstore::request_cert`
 
