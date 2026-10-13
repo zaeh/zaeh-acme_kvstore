@@ -309,9 +309,11 @@ warns. OpenVox 9 is deliberately not covered there (build time); its server JRub
 - **acme.sh sources its `account.conf` on every start** (`_initpath`), so values a DNS hook saved
   there with `_saveaccountconf` override the environment the module passes. `Acmesh` therefore
   removes the keys it passes (also `SAVED_<key>`) from that file before and after each run
-  (`forget_saved_settings`); the path follows acme.sh: `LE_CONFIG_HOME`, else `LE_WORKING_DIR`, else
-  `$HOME/.acme.sh`. With a non-root worker `HOME` is `worker::home`, so the file used at run time is
-  `<home>/.acme.sh/account.conf` (the one `--install` writes into `<home>` is not read).
+  (`forget_saved_settings`). Every call passes `--home <dir of acme.sh>`, so acme.sh keeps its
+  configuration (`account.conf`, `ca/`, domain directories) where it is installed - without it,
+  acme.sh would use `$HOME/.acme.sh`, nested below `worker::home` for a non-root worker whose home is
+  that directory. The file is therefore `<home>/account.conf` (or below `LE_CONFIG_HOME` if set);
+  `--install` creates it as root, so the worker hands it to the user.
 - **`--ca-bundle` is overridden by a saved `CA_BUNDLE`**: acme.sh applies the flag while parsing the
   command line, but `_initpath` sources `account.conf` afterwards and acme.sh saves `CA_BUNDLE`
   there after each issuance. With profile CA certificates, `Acmesh.run_acmesh` therefore removes

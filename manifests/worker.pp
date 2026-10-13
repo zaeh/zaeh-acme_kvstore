@@ -160,6 +160,18 @@ class acme_kvstore::worker (
     }
   }
 
+  # acme.sh keeps its configuration in $home too (given with --home). The
+  # install runs as root and creates account.conf; acme.sh writes it as $user.
+  unless $user == 'root' {
+    file { "${home}/account.conf":
+      ensure  => file,
+      owner   => $user,
+      group   => $group,
+      mode    => '0600',
+      require => Exec['acme_kvstore-install-acmesh'],
+    }
+  }
+
   if $manage_gems {
     package { 'acme_kvstore-redis-gem':
       ensure   => installed,

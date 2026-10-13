@@ -49,6 +49,7 @@ describe 'acme_kvstore::worker' do
         it { is_expected.to contain_file('/etc/acme_kvstore').with_ensure('directory').with_mode('0750') }
         it { is_expected.not_to contain_file('/etc/acme_kvstore/nsupdate') }
         it { is_expected.not_to contain_file('/root/.acme.sh/dnsapi') }
+        it { is_expected.not_to contain_file('/root/.acme.sh/account.conf') }
       end
 
       context 'with acme_log_file => false' do
@@ -77,6 +78,12 @@ describe 'acme_kvstore::worker' do
         let(:params) { { 'user' => 'acme', 'group' => 'acme' } }
 
         it { is_expected.to compile.with_all_deps }
+
+        it 'hands the account.conf created by the install (as root) to the user' do
+          is_expected.to contain_file('/home/acme/.acme.sh/account.conf').with(ensure: 'file', owner: 'acme', group: 'acme', mode: '0600')
+                                                                         .that_requires('Exec[acme_kvstore-install-acmesh]')
+        end
+
         it { is_expected.not_to contain_user('acme') }
         it { is_expected.to contain_file('/home/acme/.acme.sh').with_owner('acme').with_group('acme') }
         it { is_expected.to contain_file('/var/www/acme-challenge').with_owner('acme').with_group('acme') }

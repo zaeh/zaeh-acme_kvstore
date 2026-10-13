@@ -48,6 +48,9 @@ describe 'acme_kvstore end to end (OpenVox server, ACME worker, consumer)', orde
     run_agent('worker', 2)
 
     expect(E2eEnv.node_exec('worker', 'stat', '-c', '%U', '/home/acme/.acme.sh').strip).to eq('acme')
+    # acme.sh keeps its configuration where it is installed, not nested below it.
+    expect(E2eEnv.node_exec('worker', 'stat', '-c', '%U', '/home/acme/.acme.sh/account.conf').strip).to eq('acme')
+    expect(E2eEnv.node_exec('worker', 'sh', '-c', 'test -d /home/acme/.acme.sh/ca && test ! -e /home/acme/.acme.sh/.acme.sh && echo ok').strip).to eq('ok')
     E2eEnv::CERTIDS.each do |backend, certid|
       renewal = meta(backend).fetch('acme_renewal')
       expect(meta(backend)).to include('status' => 'active', 'active_version' => 1, 'updated_by' => E2eEnv::WORKER)
