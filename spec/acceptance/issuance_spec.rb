@@ -104,7 +104,7 @@ require_relative 'acceptance_helper'
       provider(**dns.call('second'), renew_before_days: 3650).create
 
       expect(File.readlines(seen, chomp: true)).to eq(%w[first second])
-      expect(File.read(File.join(AcceptanceEnv.workdir, 'home', '.acme.sh', 'account.conf'))).not_to include('ACCEPTANCE_')
+      expect(File.read(File.join(File.dirname(AcceptanceEnv.acmesh_path), 'account.conf'))).not_to include('ACCEPTANCE_')
     end
 
     # Pebble's TLS CA only via ca_bundle, not via the CA_BUNDLE the helper
@@ -120,7 +120,7 @@ require_relative 'acceptance_helper'
 
         # Without ca_bundles, acme.sh must not reach Pebble: no CA_BUNDLE was kept.
         expect { provider(renew_before_days: 3650).create }.to raise_error(PuppetX::AcmeKvstore::Acmesh::Error)
-        expect(File.read(File.join(AcceptanceEnv.workdir, 'home', '.acme.sh', 'account.conf'))).not_to match(%r{^CA_BUNDLE=})
+        expect(File.read(File.join(File.dirname(AcceptanceEnv.acmesh_path), 'account.conf'))).not_to match(%r{^CA_BUNDLE=})
       ensure
         ENV['CA_BUNDLE'] = exported
       end

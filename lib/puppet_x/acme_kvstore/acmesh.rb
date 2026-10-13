@@ -94,7 +94,7 @@ module PuppetX::AcmeKvstore
                                        ca_bundle: nil)
       return if account_email.nil? && eab_kid.nil?
 
-      cmd = [acmesh_path, '--register-account', '--server', server]
+      cmd = [acmesh_path, '--register-account', '--server', server] + home_args(acmesh_path)
       cmd += ['-m', account_email] if account_email && !account_email.to_s.empty?
       cmd += ['--eab-kid', eab_kid] if eab_kid && !eab_kid.to_s.empty?
       cmd += ['--eab-hmac-key', eab_hmac_key] if eab_hmac_key && !eab_hmac_key.to_s.empty?
@@ -109,7 +109,7 @@ module PuppetX::AcmeKvstore
                            challenge_alias, domain_alias, paths, dnssleep:, webroot:)
       # --force: this module decides when to issue (renewal window, drift);
       # without it acme.sh skips (exit 2) while its own renewal date is ahead.
-      cmd = [acmesh_path, '--issue', '--force', '--server', server]
+      cmd = [acmesh_path, '--issue', '--force', '--server', server] + home_args(acmesh_path)
       domains.each { |d| cmd += ['-d', d] }
 
       if dns_provider && !dns_provider.to_s.empty?
@@ -244,7 +244,7 @@ module PuppetX::AcmeKvstore
     # module passes: account.conf is sourced after the command line is read,
     # so a saved value would win over env and over --ca-bundle.
     def self.run_acmesh(env, cmd, ca_bundle:, **run_opts)
-      account_conf = account_conf_path(env['HOME'])
+      account_conf = account_conf_path(File.dirname(cmd.first))
       managed_keys = env.keys - ['HOME']
       managed_keys += %w[CA_BUNDLE CA_PATH] unless ca_bundle_args(ca_bundle).empty?
 
@@ -256,11 +256,18 @@ module PuppetX::AcmeKvstore
       end
     end
 
-    # Where acme.sh keeps account.conf: LE_CONFIG_HOME, else LE_WORKING_DIR,
-    # else $HOME/.acme.sh (acme.sh 3.0.9, __initHome).
-    def self.account_conf_path(home)
-      config_home = %w[LE_CONFIG_HOME LE_WORKING_DIR].map { |var| ENV.fetch(var, nil) }.find { |dir| dir && !dir.empty? }
-      config_home ||= File.join(home || Dir.home, '.acme.sh')
+    # acme.sh's working (and config) directory is where it is installed;
+    # without --home it would be $HOME/.acme.sh, nested in that directory for
+    # a worker user whose home is the acme.sh directory.
+    def self.home_args(acmesh_path)
+      ['--home', File.dirname(acmesh_path)]
+    end
+
+    # Where acme.sh keeps account.conf: LE_CONFIG_HOME if set, else the
+    # directory given with --home (acme.sh 3.0.9, __initHome).
+    def self.account_conf_path(acmesh_dir)
+      config_home = ENV.fetch('LE_CONFIG_HOME', nil)
+      config_home = acmesh_dir if config_home.nil? || config_home.empty?
       File.join(config_home, 'account.conf')
     end
 
@@ -294,7 +301,7 @@ module PuppetX::AcmeKvstore
 
     private_class_method :build_command, :key_length_args, :log_args, :build_env, :read_if_present, :chown_to_run_as_user,
                          :ensure_account_registered, :run_with_timeout, :terminate, :process_alive?,
-                         :account_conf_path, :forget_saved_settings, :ca_bundle_args, :run_acmesh,
+                         :account_conf_path, :home_args, :forget_saved_settings, :ca_bundle_args, :run_acmesh,
                          :join_ca_bundles
   end
 end

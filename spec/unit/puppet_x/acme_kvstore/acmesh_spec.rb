@@ -96,6 +96,15 @@ describe PuppetX::AcmeKvstore::Acmesh do
       expect(calls.first[:args]).to include('--issue')
     end
 
+    it 'gives acme.sh its own directory as home, for the registration and the issuance' do
+      calls = []
+      stub_popen3(calls)
+      described_class.issue_or_renew(**base_args, account_email: 'pki@example.com', run_as_home: '/home/acme/.acme.sh')
+
+      expect(calls.size).to eq(2)
+      calls.each { |call| expect(call[:args].each_cons(2)).to include(['--home', '/root/.acme.sh']) }
+    end
+
     it 'always forces the issuance (the module decides when, not acme.sh)' do
       calls = []
       stub_popen3(calls)
@@ -310,12 +319,13 @@ describe PuppetX::AcmeKvstore::Acmesh do
 
   describe 'settings a DNS hook saved in account.conf' do
     let(:home) { Dir.mktmpdir('acme_kvstore-spec') }
+    let(:acmesh_path) { File.join(home, 'acme.sh') }
     let(:dns_args) do
       base_args.merge(dns_provider: 'dns_infoblox', run_as_home: home,
                       dns_env: { 'Infoblox_Server' => 'ib.example.com', 'Infoblox_View' => 'internal', 'Infoblox_Creds' => 'u:p' })
     end
 
-    def conf = File.join(home, '.acme.sh', 'account.conf')
+    def conf = File.join(home, 'account.conf')
 
     before do
       allow(described_class).to receive(:account_conf_path).and_call_original
@@ -383,15 +393,16 @@ describe PuppetX::AcmeKvstore::Acmesh do
       expect(described_class.send(:account_conf_path, home)).to eq(File.join(config_home, 'account.conf'))
     end
 
-    it 'defaults to $HOME/.acme.sh/account.conf' do
+    it "defaults to acme.sh's own directory, given to acme.sh with --home" do
       expect(described_class.send(:account_conf_path, home)).to eq(conf)
     end
   end
 
   describe 'ca_bundles' do
     let(:home) { Dir.mktmpdir('acme_kvstore-spec') }
+    let(:acmesh_path) { File.join(home, 'acme.sh') }
 
-    def conf = File.join(home, '.acme.sh', 'account.conf')
+    def conf = File.join(home, 'account.conf')
 
     def bundle(name, content) = File.join(home, name).tap { |path| File.write(path, content) }
 

@@ -309,9 +309,11 @@ warns. OpenVox 9 is deliberately not covered there (build time); its server JRub
 - **acme.sh sources its `account.conf` on every start** (`_initpath`), so values a DNS hook saved
   there with `_saveaccountconf` override the environment the module passes. `Acmesh` therefore
   removes the keys it passes (also `SAVED_<key>`) from that file before and after each run
-  (`forget_saved_settings`); the path follows acme.sh: `LE_CONFIG_HOME`, else `LE_WORKING_DIR`, else
-  `$HOME/.acme.sh`. With a non-root worker `HOME` is `worker::home`, so the file used at run time is
-  `<home>/.acme.sh/account.conf` (the one `--install` writes into `<home>` is not read).
+  (`forget_saved_settings`). Every call passes `--home <dir of acme.sh>`, so acme.sh keeps its
+  configuration (`account.conf`, `ca/`, domain directories) where it is installed - without it,
+  acme.sh would use `$HOME/.acme.sh`, nested below `worker::home` for a non-root worker whose home is
+  that directory. The file is therefore `<home>/account.conf` (or below `LE_CONFIG_HOME` if set);
+  `--install` creates it as root, so the worker hands it to the user.
 - **`--ca-bundle` is overridden by a saved `CA_BUNDLE`**: acme.sh applies the flag while parsing the
   command line, but `_initpath` sources `account.conf` afterwards and acme.sh saves `CA_BUNDLE`
   there after each issuance. With profile CA certificates, `Acmesh.run_acmesh` therefore removes
@@ -319,10 +321,14 @@ warns. OpenVox 9 is deliberately not covered there (build time); its server JRub
   replaces the trust store for the DNS hook too, so CA and DNS profiles both have
   `ca_certificates`/`ca_bundle`; `certificate.pp` lists them (plus the OS store with
   `ca_bundle_include_system`) and `Acmesh.join_ca_bundles` joins them per run.
-- **acme.sh installation** (`git` via vcsrepo, `archive` via a checksum-verified `file` download plus
-  `tar --strip-components=1`, or `package`): the install exec has no `creates` but an `unless`
-  comparing the `VER=` lines of source and installed script, so a changed `acme_version` is
-  installed; files cannot be compared because `--install` rewrites the shebang to bash.
+- **acme.sh installation** (`archive`, the default: a checksum-verified `file` download plus
+  `tar --strip-components=1` into `/opt/acme.sh-<version>`; `git`: `git clone --depth 1 --branch
+  <version>` into `/opt/acme.sh-git-<version>`): one source directory per version, so it is
+  downloaded once and later runs need no network - workers often have none. Not vcsrepo: with a tag
+  it runs `git fetch` on every run. No `package` method: acme.sh is packaged almost nowhere (Debian 13
+  only, under `/usr`), and `certificate.pp` runs `<home>/acme.sh`. The install exec has no `creates`
+  but an `unless` comparing the `VER=` lines of source and installed script, so a changed
+  `acme_version` is installed; files cannot be compared because `--install` rewrites the shebang.
 - **The `redis` gem may arrive mid-run**: `acme_kvstore::worker` installs it with `puppet_gem`, so
   `RedisClient.load_gem` retries the `require` (after `Gem.clear_paths`) instead of trusting the
   load-time attempt.

@@ -60,11 +60,6 @@ services:
         target: /etc/puppetlabs/code/environments/production/modules/stdlib
         read_only: true
         bind: { create_host_path: false }
-      - type: bind
-        source: ../fixtures/modules/vcsrepo
-        target: /etc/puppetlabs/code/environments/production/modules/vcsrepo
-        read_only: true
-        bind: { create_host_path: false }
     healthcheck:
       test: [CMD, /healthcheck.sh]
       interval: 5s
