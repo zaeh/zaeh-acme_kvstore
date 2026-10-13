@@ -320,6 +320,7 @@ The following parameters are available in the `acme_kvstore::worker` class:
 * [`install_method`](#-acme_kvstore--worker--install_method)
 * [`acme_version`](#-acme_kvstore--worker--acme_version)
 * [`acme_git_url`](#-acme_kvstore--worker--acme_git_url)
+* [`acme_archive_url`](#-acme_kvstore--worker--acme_archive_url)
 * [`acme_archive_sha256`](#-acme_kvstore--worker--acme_archive_sha256)
 * [`manage_packages`](#-acme_kvstore--worker--manage_packages)
 * [`manage_gems`](#-acme_kvstore--worker--manage_gems)
@@ -333,7 +334,6 @@ The following parameters are available in the `acme_kvstore::worker` class:
 * [`acme_log_file`](#-acme_kvstore--worker--acme_log_file)
 * [`acme_log_level`](#-acme_kvstore--worker--acme_log_level)
 * [`manage_log_dir`](#-acme_kvstore--worker--manage_log_dir)
-* [`acme_archive_url`](#-acme_kvstore--worker--acme_archive_url)
 * [`home`](#-acme_kvstore--worker--home)
 
 ##### <a name="-acme_kvstore--worker--install_method"></a>`install_method`
@@ -361,6 +361,15 @@ Data type: `String[1]`
 acme.sh Git repository (e.g. an internal mirror).
 
 Default value: `'https://github.com/acmesh-official/acme.sh.git'`
+
+##### <a name="-acme_kvstore--worker--acme_archive_url"></a>`acme_archive_url`
+
+Data type: `Stdlib::HTTPUrl`
+
+URL of the acme.sh tarball for 'archive', e.g. on a local mirror. The module's Hiera data
+builds the default from acme_version as set in Hiera (the GitHub archive of that tag).
+
+Default value: `'https://github.com/acmesh-official/acme.sh/archive/refs/tags/%{lookup('acme_kvstore::worker::acme_version')}.tar.gz'`
 
 ##### <a name="-acme_kvstore--worker--acme_archive_sha256"></a>`acme_archive_sha256`
 
@@ -467,15 +476,6 @@ Data type: `Boolean`
 Manage the log file's directory (false for shared ones like /var/log).
 
 Default value: `true`
-
-##### <a name="-acme_kvstore--worker--acme_archive_url"></a>`acme_archive_url`
-
-Data type: `Optional[Stdlib::HTTPUrl]`
-
-URL of the acme.sh tarball for 'archive' (e.g. an internal mirror); undef: the GitHub
-archive of acme_version.
-
-Default value: `undef`
 
 ##### <a name="-acme_kvstore--worker--home"></a>`home`
 

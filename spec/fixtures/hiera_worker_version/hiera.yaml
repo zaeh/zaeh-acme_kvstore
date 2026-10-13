@@ -1,0 +1,10 @@
+---
+# Test-only Hiera (spec/classes/worker_spec.rb): another acme_version, to show
+# that the module data's default acme_archive_url follows it.
+version: 5
+defaults:
+  datadir: data
+  data_hash: yaml_data
+hierarchy:
+  - name: 'common'
+    path: 'common.yaml'

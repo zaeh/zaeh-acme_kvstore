@@ -10,6 +10,9 @@
 #   acme.sh version: the version in the default archive URL for 'archive', the Git tag (or
 #   branch) for 'git'; pinned so updates are deliberate. A change is installed.
 # @param acme_git_url acme.sh Git repository (e.g. an internal mirror).
+# @param acme_archive_url
+#   URL of the acme.sh tarball for 'archive', e.g. on a local mirror. The module's Hiera data
+#   builds the default from acme_version as set in Hiera (the GitHub archive of that tag).
 # @param acme_archive_sha256 SHA-256 of the archive; the download is discarded on a mismatch.
 # @param manage_packages Install git (for install_method 'git').
 # @param manage_gems Install the redis gem (needed on the worker for the Redis backend only).
@@ -27,15 +30,13 @@
 # @param acme_log_file acme.sh log file, or false for none; not rotated.
 # @param acme_log_level acme.sh log level: 1 (normal) or 2 (debug).
 # @param manage_log_dir Manage the log file's directory (false for shared ones like /var/log).
-# @param acme_archive_url
-#   URL of the acme.sh tarball for 'archive' (e.g. an internal mirror); undef: the GitHub
-#   archive of acme_version.
 # @param home acme.sh home; derived from user by default.
 class acme_kvstore::worker (
   # Installation of acme.sh
   Enum['archive', 'git']                        $install_method,
   String[1]                                     $acme_version,
   String[1]                                     $acme_git_url,
+  Stdlib::HTTPUrl                               $acme_archive_url,
   Pattern[/\A\h{64}\z/]                         $acme_archive_sha256,
   Boolean                                       $manage_packages,
   Boolean                                       $manage_gems,
@@ -54,11 +55,8 @@ class acme_kvstore::worker (
   Integer[1, 2]                                 $acme_log_level,
   Boolean                                       $manage_log_dir,
 
-  # Optional
-  Optional[Stdlib::HTTPUrl]                     $acme_archive_url = undef,
-
   # Derived from $user, so its default stays here, not in data/common.yaml
-  Stdlib::Absolutepath                          $home             = $user ? { 'root' => '/root/.acme.sh', default => "/home/${user}/.acme.sh" },
+  Stdlib::Absolutepath                          $home = $user ? { 'root' => '/root/.acme.sh', default => "/home/${user}/.acme.sh" },
 ) {
   include acme_kvstore
 
@@ -114,12 +112,11 @@ class acme_kvstore::worker (
   } else {
     $source_dir = "/opt/acme.sh-${acme_version}"
     $archive = "${source_dir}.tar.gz"
-    $archive_url = pick($acme_archive_url, "https://github.com/acmesh-official/acme.sh/archive/refs/tags/${acme_version}.tar.gz")
 
     # Puppet discards the download if it does not match the checksum.
     file { $archive:
       ensure         => file,
-      source         => $archive_url,
+      source         => $acme_archive_url,
       checksum       => 'sha256',
       checksum_value => $acme_archive_sha256,
       mode           => '0644',

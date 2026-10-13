@@ -174,6 +174,15 @@ describe 'acme_kvstore::worker' do
         end
       end
 
+      context 'with another acme_version in Hiera' do
+        let(:hiera_config) { File.expand_path('../fixtures/hiera_worker_version/hiera.yaml', __dir__) }
+
+        it 'downloads the GitHub archive of that version (default URL from the module data)' do
+          is_expected.to contain_file('/opt/acme.sh-3.1.1.tar.gz')
+            .with_source('https://github.com/acmesh-official/acme.sh/archive/refs/tags/3.1.1.tar.gz')
+        end
+      end
+
       context "with install_method => 'archive' from a mirror" do
         let(:params) do
           { 'install_method' => 'archive', 'acme_version' => '3.1.1', 'acme_archive_url' => 'https://mirror.example.com/acme.sh-3.1.1.tar.gz',
