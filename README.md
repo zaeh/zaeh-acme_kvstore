@@ -36,8 +36,7 @@ before 1.0.0.
 - with Redis: the `redis` gem on the worker (`acme_kvstore::worker::manage_gems: true`) and in
   the Puppet server's JRuby (`puppetserver gem install redis`), see
   [docs/redis.md](docs/redis.md#prerequisite)
-- modules [puppetlabs/stdlib](https://forge.puppet.com/modules/puppetlabs/stdlib)
-  and [puppetlabs/vcsrepo](https://forge.puppet.com/modules/puppetlabs/vcsrepo)
+- module [puppetlabs/stdlib](https://forge.puppet.com/modules/puppetlabs/stdlib)
 
 ## Documentation
 

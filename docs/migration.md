@@ -97,6 +97,6 @@ mechanism). Recommended migration path:
 | `dnssleep` | `$dnssleep` / DNS profile `options['dnssleep']` / `dnssleep` |
 | `posthook_cmd` | `posthook_cmd` (runs on the worker only); on consumers use `acme_kvstore::deploy`'s `notify_services` |
 | `proxy`, `exec_timeout` | same names |
-| `acme_git_url`, `acme_git_force`, `acme_revision` | `acme_kvstore::worker`'s `acme_git_url`, `acme_git_force`, `acme_version` (pinned by default) |
+| `acme_git_url`, `acme_git_force`, `acme_revision` | `acme_kvstore::worker`'s `install_method => 'git'`, `acme_git_url`, `acme_version` (a tag; pinned by default). The default is `install_method => 'archive'` (`acme_archive_url`, e.g. a local mirror). |
 | `acmelog`, `log_dir` | `acme_kvstore::worker`'s `acme_log_file`, `acme_log_level` |
 | `user`, `group`, `manage_packages` | `acme_kvstore::worker`'s `user`, `group`, `manage_packages` |

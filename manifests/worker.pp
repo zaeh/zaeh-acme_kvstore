@@ -4,14 +4,13 @@
 # Defaults: data/common.yaml.
 #
 # @param install_method
-#   Install acme.sh from 'git', from an 'archive' (tarball from a URL) or as a 'package'.
+#   Install acme.sh from an 'archive' (tarball from a URL, e.g. a local mirror) or from 'git';
+#   either only downloads once per acme_version.
 # @param acme_version
-#   acme.sh version: the Git tag (or branch/commit) for 'git', the version in the default
-#   archive URL for 'archive'; pinned so updates are deliberate. A change is installed.
+#   acme.sh version: the version in the default archive URL for 'archive', the Git tag (or
+#   branch) for 'git'; pinned so updates are deliberate. A change is installed.
 # @param acme_git_url acme.sh Git repository (e.g. an internal mirror).
-# @param acme_git_force Recreate the clone, discarding local changes.
 # @param acme_archive_sha256 SHA-256 of the archive; the download is discarded on a mismatch.
-# @param acme_package_ensure ensure of the 'acme.sh' package, e.g. a fixed version such as '3.0.9-1'.
 # @param manage_packages Install git (for install_method 'git').
 # @param manage_gems Install the redis gem (needed on the worker for the Redis backend only).
 # @param manage_user Create user/group (false: use an existing account).
@@ -34,12 +33,10 @@
 # @param home acme.sh home; derived from user by default.
 class acme_kvstore::worker (
   # Installation of acme.sh
-  Enum['git', 'archive', 'package']             $install_method,
+  Enum['archive', 'git']                        $install_method,
   String[1]                                     $acme_version,
   String[1]                                     $acme_git_url,
-  Boolean                                       $acme_git_force,
   Pattern[/\A\h{64}\z/]                         $acme_archive_sha256,
-  String[1]                                     $acme_package_ensure,
   Boolean                                       $manage_packages,
   Boolean                                       $manage_gems,
 
@@ -85,6 +82,7 @@ class acme_kvstore::worker (
     package { 'acme_kvstore-git':
       ensure => installed,
       name   => 'git',
+      before => Exec['acme_kvstore-clone-acmesh'],
     }
   }
 
@@ -103,68 +101,62 @@ class acme_kvstore::worker (
     require => Exec['acme_kvstore-webroot'],
   }
 
-  if $install_method == 'package' {
-    package { 'acme.sh':
-      ensure => $acme_package_ensure,
+  # Each version gets a source directory of its own, so it is downloaded
+  # once and later runs need no access to the source.
+  if $install_method == 'git' {
+    $source_dir = "/opt/acme.sh-git-${acme_version}"
+    exec { 'acme_kvstore-clone-acmesh':
+      command => ['git', 'clone', '--depth', '1', '--branch', $acme_version, $acme_git_url, $source_dir],
+      creates => "${source_dir}/acme.sh",
+      path    => ['/usr/bin', '/bin'],
     }
+    $source = Exec['acme_kvstore-clone-acmesh']
   } else {
-    if $install_method == 'git' {
-      $source_dir = '/opt/acme.sh-src'
-      vcsrepo { $source_dir:
-        ensure   => present,
-        provider => git,
-        source   => $acme_git_url,
-        revision => $acme_version,
-        force    => $acme_git_force,
-      }
-      $source = Vcsrepo[$source_dir]
-    } else {
-      $source_dir = "/opt/acme.sh-${acme_version}"
-      $archive = "${source_dir}.tar.gz"
-      $archive_url = pick($acme_archive_url, "https://github.com/acmesh-official/acme.sh/archive/refs/tags/${acme_version}.tar.gz")
+    $source_dir = "/opt/acme.sh-${acme_version}"
+    $archive = "${source_dir}.tar.gz"
+    $archive_url = pick($acme_archive_url, "https://github.com/acmesh-official/acme.sh/archive/refs/tags/${acme_version}.tar.gz")
 
-      # Puppet discards the download if it does not match the checksum.
-      file { $archive:
-        ensure         => file,
-        source         => $archive_url,
-        checksum       => 'sha256',
-        checksum_value => $acme_archive_sha256,
-        mode           => '0644',
-      }
-
-      file { $source_dir:
-        ensure => directory,
-      }
-
-      # The top directory of the tarball depends on where it comes from.
-      exec { 'acme_kvstore-extract-acmesh':
-        command => ['tar', 'xzf', $archive, '-C', $source_dir, '--strip-components=1'],
-        creates => "${source_dir}/acme.sh",
-        path    => ['/usr/bin', '/bin'],
-        require => [File[$archive], File[$source_dir]],
-      }
-      $source = Exec['acme_kvstore-extract-acmesh']
+    # Puppet discards the download if it does not match the checksum.
+    file { $archive:
+      ensure         => file,
+      source         => $archive_url,
+      checksum       => 'sha256',
+      checksum_value => $acme_archive_sha256,
+      mode           => '0644',
     }
 
-    # Reinstalls when the source has another version. --install rewrites the
-    # shebang, so the VER= lines are compared, not the files.
-    exec { 'acme_kvstore-install-acmesh':
-      command  => "${source_dir}/acme.sh --install --home ${home} --nocron",
-      unless   => "test -x '${home}/acme.sh' && [ \"\$(grep -m1 '^VER=' '${source_dir}/acme.sh')\" = \"\$(grep -m1 '^VER=' '${home}/acme.sh')\" ]",
-      provider => shell,
-      cwd      => $source_dir, # --install copies acme.sh from the working directory
-      path     => ['/usr/bin', '/bin', $source_dir],
-      require  => $source,
+    file { $source_dir:
+      ensure => directory,
     }
 
-    if $manage_home {
-      file { $home:
-        ensure  => directory,
-        owner   => $user,
-        group   => $group,
-        recurse => false,
-        require => Exec['acme_kvstore-install-acmesh'],
-      }
+    # The top directory of the tarball depends on where it comes from.
+    exec { 'acme_kvstore-extract-acmesh':
+      command => ['tar', 'xzf', $archive, '-C', $source_dir, '--strip-components=1'],
+      creates => "${source_dir}/acme.sh",
+      path    => ['/usr/bin', '/bin'],
+      require => [File[$archive], File[$source_dir]],
+    }
+    $source = Exec['acme_kvstore-extract-acmesh']
+  }
+
+  # Reinstalls when the source has another version. --install rewrites the
+  # shebang, so the VER= lines are compared, not the files.
+  exec { 'acme_kvstore-install-acmesh':
+    command  => "${source_dir}/acme.sh --install --home ${home} --nocron",
+    unless   => "test -x '${home}/acme.sh' && [ \"\$(grep -m1 '^VER=' '${source_dir}/acme.sh')\" = \"\$(grep -m1 '^VER=' '${home}/acme.sh')\" ]",
+    provider => shell,
+    cwd      => $source_dir, # --install copies acme.sh from the working directory
+    path     => ['/usr/bin', '/bin', $source_dir],
+    require  => $source,
+  }
+
+  if $manage_home {
+    file { $home:
+      ensure  => directory,
+      owner   => $user,
+      group   => $group,
+      recurse => false,
+      require => Exec['acme_kvstore-install-acmesh'],
     }
   }
 
@@ -206,10 +198,7 @@ class acme_kvstore::worker (
   # Custom DNS API scripts: acme.sh looks in <home>/dnsapi/ first and only
   # sources the file, so read access suffices.
   unless empty($acme_kvstore::dnsapi_scripts) {
-    $acmesh_installed = $install_method ? {
-      'package' => Package['acme.sh'],
-      default   => Exec['acme_kvstore-install-acmesh'],
-    }
+    $acmesh_installed = Exec['acme_kvstore-install-acmesh']
 
     file { "${home}/dnsapi":
       ensure  => directory,

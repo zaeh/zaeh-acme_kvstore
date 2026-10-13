@@ -320,9 +320,7 @@ The following parameters are available in the `acme_kvstore::worker` class:
 * [`install_method`](#-acme_kvstore--worker--install_method)
 * [`acme_version`](#-acme_kvstore--worker--acme_version)
 * [`acme_git_url`](#-acme_kvstore--worker--acme_git_url)
-* [`acme_git_force`](#-acme_kvstore--worker--acme_git_force)
 * [`acme_archive_sha256`](#-acme_kvstore--worker--acme_archive_sha256)
-* [`acme_package_ensure`](#-acme_kvstore--worker--acme_package_ensure)
 * [`manage_packages`](#-acme_kvstore--worker--manage_packages)
 * [`manage_gems`](#-acme_kvstore--worker--manage_gems)
 * [`manage_user`](#-acme_kvstore--worker--manage_user)
@@ -340,18 +338,19 @@ The following parameters are available in the `acme_kvstore::worker` class:
 
 ##### <a name="-acme_kvstore--worker--install_method"></a>`install_method`
 
-Data type: `Enum['git', 'archive', 'package']`
+Data type: `Enum['archive', 'git']`
 
-Install acme.sh from 'git', from an 'archive' (tarball from a URL) or as a 'package'.
+Install acme.sh from an 'archive' (tarball from a URL, e.g. a local mirror) or from 'git';
+either only downloads once per acme_version.
 
-Default value: `'git'`
+Default value: `'archive'`
 
 ##### <a name="-acme_kvstore--worker--acme_version"></a>`acme_version`
 
 Data type: `String[1]`
 
-acme.sh version: the Git tag (or branch/commit) for 'git', the version in the default
-archive URL for 'archive'; pinned so updates are deliberate. A change is installed.
+acme.sh version: the version in the default archive URL for 'archive', the Git tag (or
+branch) for 'git'; pinned so updates are deliberate. A change is installed.
 
 Default value: `'3.0.9'`
 
@@ -363,14 +362,6 @@ acme.sh Git repository (e.g. an internal mirror).
 
 Default value: `'https://github.com/acmesh-official/acme.sh.git'`
 
-##### <a name="-acme_kvstore--worker--acme_git_force"></a>`acme_git_force`
-
-Data type: `Boolean`
-
-Recreate the clone, discarding local changes.
-
-Default value: `false`
-
 ##### <a name="-acme_kvstore--worker--acme_archive_sha256"></a>`acme_archive_sha256`
 
 Data type: `Pattern[/\A\h{64}\z/]`
@@ -378,14 +369,6 @@ Data type: `Pattern[/\A\h{64}\z/]`
 SHA-256 of the archive; the download is discarded on a mismatch.
 
 Default value: `'a599e8373cd327fb611362bec6f1bfb0bf65c97b3401c440cfea9304a0f0cb41'`
-
-##### <a name="-acme_kvstore--worker--acme_package_ensure"></a>`acme_package_ensure`
-
-Data type: `String[1]`
-
-ensure of the 'acme.sh' package, e.g. a fixed version such as '3.0.9-1'.
-
-Default value: `'installed'`
 
 ##### <a name="-acme_kvstore--worker--manage_packages"></a>`manage_packages`
 

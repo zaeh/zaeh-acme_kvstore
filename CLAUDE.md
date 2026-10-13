@@ -319,10 +319,14 @@ warns. OpenVox 9 is deliberately not covered there (build time); its server JRub
   replaces the trust store for the DNS hook too, so CA and DNS profiles both have
   `ca_certificates`/`ca_bundle`; `certificate.pp` lists them (plus the OS store with
   `ca_bundle_include_system`) and `Acmesh.join_ca_bundles` joins them per run.
-- **acme.sh installation** (`git` via vcsrepo, `archive` via a checksum-verified `file` download plus
-  `tar --strip-components=1`, or `package`): the install exec has no `creates` but an `unless`
-  comparing the `VER=` lines of source and installed script, so a changed `acme_version` is
-  installed; files cannot be compared because `--install` rewrites the shebang to bash.
+- **acme.sh installation** (`archive`, the default: a checksum-verified `file` download plus
+  `tar --strip-components=1` into `/opt/acme.sh-<version>`; `git`: `git clone --depth 1 --branch
+  <version>` into `/opt/acme.sh-git-<version>`): one source directory per version, so it is
+  downloaded once and later runs need no network - workers often have none. Not vcsrepo: with a tag
+  it runs `git fetch` on every run. No `package` method: acme.sh is packaged almost nowhere (Debian 13
+  only, under `/usr`), and `certificate.pp` runs `<home>/acme.sh`. The install exec has no `creates`
+  but an `unless` comparing the `VER=` lines of source and installed script, so a changed
+  `acme_version` is installed; files cannot be compared because `--install` rewrites the shebang.
 - **The `redis` gem may arrive mid-run**: `acme_kvstore::worker` installs it with `puppet_gem`, so
   `RedisClient.load_gem` retries the `require` (after `Gem.clear_paths`) instead of trusting the
   load-time attempt.
