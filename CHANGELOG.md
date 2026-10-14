@@ -62,7 +62,7 @@ Initial development version, not released yet.
 - Typed parameters (`types/`), defaults in module Hiera data with
   deep-merged hashes.
 - Tests: rspec-puppet/RuboCop/puppet-lint via voxpupuli-test on OpenVox 8
-  (and OpenVox 9 under Ruby 4.0), PDK 3.8 compatible; `rake jruby:compat`
+  (and OpenVox 9 under Ruby 4.0), PDK 4.0 compatible; `rake jruby:compat`
   checks the lookup code under the Puppet server's JRuby; `rake acceptance`
   issues with acme.sh against Pebble into real Consul and Redis (ACLs
   included), also in CI; `rake acceptance:e2e` runs a real OpenVox 8 server,

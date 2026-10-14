@@ -3,11 +3,11 @@
 This file provides guidance to Claude Code (claude.ai/code) and human contributors when
 working with code in this repository.
 
-> **Starting point, not a straitjacket.** This file's structure follows the baseline shipped by
-> [puppetlabs/pdk-templates](https://github.com/puppetlabs/pdk-templates)' `moduleroot_init/CLAUDE.md.erb`,
-> filled in with this module's own specifics. PDK adds a file like this when a module is first
-> created and then leaves it alone - it is not re-synced on `pdk update`. It is yours to edit
-> freely; keep it current as the module grows.
+> **Starting point, not a straitjacket.** This file's structure follows the baseline that
+> [puppetlabs/pdk-templates](https://github.com/puppetlabs/pdk-templates) 3.8 shipped as
+> `moduleroot_init/CLAUDE.md.erb` (removed in 4.0.1), filled in with this module's own specifics.
+> PDK never re-synced it on `pdk update`. It is yours to edit freely; keep it current as the module
+> grows.
 >
 > This module also follows [Voxpupuli](https://voxpupuli.org/) testing conventions
 > (`voxpupuli-test`, matching real modules such as
@@ -384,16 +384,25 @@ warns. OpenVox 9 is deliberately not covered there (build time); its server JRub
 - `requirements` allows Puppet 8 and 9 (`>= 8.0.0 < 10.0.0`); keep code and specs in step with both lanes.
 - `license` is `AGPL-3.0-only` (SPDX), matching the verbatim GNU text in `LICENSE`.
 - The `pdk-version`/`template-url`/`template-ref` fields were written by a real `pdk convert`
-  (PDK 3.8.0). Only ever let `pdk convert`/`pdk update` change them; never hand-edit them.
+  (PDK 3.8.0) and `pdk update --template-ref 4.0.1` (PDK 4.0.1). Only ever let
+  `pdk convert`/`pdk update` change them; never hand-edit them.
 - The Voxpupuli-based files (`Gemfile`, `Rakefile`, `.rubocop.yml`, `.gitignore`,
   `spec/spec_helper.rb`, `spec/default_facts.yml`) are marked `unmanaged: true` in `.sync.yml`, so
   `pdk update` does not replace them with PDK's template versions. Keep it that way.
-- PDK works with the OpenVox-based Gemfile: it still reports "Using Puppet 8.20.0" (its bundled
+- PDK works with the OpenVox-based Gemfile: it still reports "Using Puppet ..." (its bundled
   Perforce Puppet), but since the Gemfile has no `puppet` gem, OpenVox is what actually runs.
+- PDK 4 defaults to Ruby 4.0 (Puppet 9). The Gemfile ignores PDK's `PUPPET_GEM_VERSION` and would
+  pick OpenVox 8 there, so choose the lane explicitly:
+  `pdk validate --puppet-version 8` / `pdk test unit --puppet-version 8` (Ruby 3.2, OpenVox 8), or
+  `OPENVOX_GEM_VERSION='~> 9.0' pdk validate` / `... pdk test unit` (Ruby 4.0, OpenVox 9).
+- PDK checks for a `bin/puppet` binstub of a gem named `puppet`, which the Gemfile does not have: in
+  a checkout without `bin/` (gitignored), PDK's validators fail with "Could not find gem 'puppet'".
+  An existing `bin/puppet` works (Bundler only notes it was created for `openvox`).
 - A packaged PDK resolves gems offline only: run `pdk bundle install` once so the Voxpupuli gems land
-  in `~/.pdk/cache`. PDK and plain Bundler share the (gitignored) `Gemfile.lock`, and PDK may pin
-  gem versions that exist only in its local cache. If `bundle exec` then reports missing gems, run
-  `bundle update --conservative <those gems>`. The `spec_prep`/`spec_clean`/`spec_standalone`/
+  in `~/.pdk/cache`. PDK and plain Bundler share the (gitignored) `Gemfile.lock` - so do both PDK
+  lanes - and PDK may pin gem versions that exist only in its local cache. If `bundle exec` or PDK
+  then reports missing gems, run `bundle update --conservative <those gems>` or `pdk bundle install`
+  for that lane. The `spec_prep`/`spec_clean`/`spec_standalone`/
   `spec_list_json` aliases in the Rakefile exist only so `pdk test unit` works with voxpupuli-test
   >= 10.
 
