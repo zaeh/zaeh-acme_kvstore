@@ -234,7 +234,7 @@ module PuppetX::AcmeKvstore
       joined_path
     end
 
-    # acme.sh 3.0.9: --ca-bundle sets CA_BUNDLE (curl --cacert); acme.sh
+    # acme.sh (3.0.9, 3.1.6): --ca-bundle sets CA_BUNDLE (curl --cacert); acme.sh
     # saves it in account.conf, see run_acmesh.
     def self.ca_bundle_args(ca_bundle)
       (ca_bundle.nil? || ca_bundle.to_s.empty?) ? [] : ['--ca-bundle', ca_bundle.to_s]
@@ -264,7 +264,7 @@ module PuppetX::AcmeKvstore
     end
 
     # Where acme.sh keeps account.conf: LE_CONFIG_HOME if set, else the
-    # directory given with --home (acme.sh 3.0.9, __initHome).
+    # directory given with --home (acme.sh 3.0.9, 3.1.6: __initHome).
     def self.account_conf_path(acmesh_dir)
       config_home = ENV.fetch('LE_CONFIG_HOME', nil)
       config_home = acmesh_dir if config_home.nil? || config_home.empty?

@@ -170,7 +170,7 @@ other hook, never into the script itself.
 
 `acme_kvstore::worker` installs it as `<home>/dnsapi/<hook>.sh` (e.g.
 `/home/acme/.acme.sh/dnsapi/dns_rockenstein.sh`), owned by `root`, group
-`<group>`, mode `0640`, after acme.sh itself: acme.sh 3.0.9 looks in its
+`<group>`, mode `0640`, after acme.sh itself: acme.sh looks in its
 own `dnsapi/` directory first and only sources the file, so read access
 is all the acme.sh user gets.
 

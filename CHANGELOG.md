@@ -46,6 +46,7 @@ Initial development version, not released yet.
   once per `acme_version` and needs no access to the source afterwards.
   A changed version is installed; `manage_home`; the `redis` gem only with
   `manage_gems` (default `false`). No dependency on puppetlabs/vcsrepo.
+  Default acme.sh version: 3.1.6.
 - CA and DNS profiles can bring the CA certificates acme.sh trusts
   (`ca_certificates` as PEM, or `ca_bundle` as a file on the worker), e.g.
   for a private step-ca or an internal DNS API; joined per certificate, with

@@ -32,8 +32,8 @@ module AcceptanceEnv
   REDIS_PORT = 16_379
   ACME_DIRECTORY = 'https://localhost:14000/dir'
   PEBBLE_MANAGEMENT = 'https://localhost:15000'
-  ACMESH_VERSION = '3.0.9'
-  ACMESH_SHA256 = 'a599e8373cd327fb611362bec6f1bfb0bf65c97b3401c440cfea9304a0f0cb41'
+  ACMESH_VERSION = '3.1.6'
+  ACMESH_SHA256 = '0d3f9000ac44a6331314742a88c475f79134e24fc991997883652adc59efc486'
   AREAS = %w[web internal].freeze
 
   module_function
@@ -46,7 +46,7 @@ module AcceptanceEnv
     @area_secret ||= Base64.strict_encode64(OpenSSL::Random.random_bytes(32))
   end
 
-  # Pebble's TLS CA; acme.sh reads CA_BUNDLE (verified in the 3.0.9 source:
+  # Pebble's TLS CA; acme.sh reads CA_BUNDLE (verified in the 3.0.9 and 3.1.6 source:
   # curl --cacert / wget --ca-certificate) and inherits the environment.
   def pebble_ca
     @pebble_ca ||= begin

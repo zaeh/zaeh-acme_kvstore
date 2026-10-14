@@ -242,10 +242,10 @@ them.
 | Parameter | Type | Default | Description |
 | --- | --- | --- | --- |
 | `install_method` | `Enum['archive','git']` | `'archive'` | How acme.sh is installed: from a tarball (`archive`, e.g. from a local mirror) or as a shallow Git clone (`git`). Either downloads once per `acme_version` into a directory of its own (`/opt/acme.sh-<version>` or `/opt/acme.sh-git-<version>`); later runs need no access to the source. |
-| `acme_version` | `String[1]` | `'3.0.9'` | acme.sh version: the version in the default archive URL for `archive`, the Git tag (or branch) for `git`. Pinned, so acme.sh is only updated deliberately; a changed version is installed on the next run. |
+| `acme_version` | `String[1]` | `'3.1.6'` | acme.sh version: the version in the default archive URL for `archive`, the Git tag (or branch) for `git`. Pinned, so acme.sh is only updated deliberately; a changed version is installed on the next run. |
 | `acme_git_url` | `String[1]` | the official GitHub repo | Git URL to clone acme.sh from for `git`. Override to use an internal mirror. |
 | `acme_archive_url` | `Stdlib::HTTPUrl` | the GitHub archive of `acme_version`, built in the module's Hiera data from the `acme_version` set in Hiera | Tarball for `archive`, e.g. on a local mirror. Unpacked into `/opt/acme.sh-<acme_version>`, whatever its top directory. |
-| `acme_archive_sha256` | `Pattern[/\A\h{64}\z/]` | SHA-256 of the GitHub archive of 3.0.9 | Checksum of the tarball; Puppet discards a download that does not match. Change it together with `acme_version`/`acme_archive_url`. |
+| `acme_archive_sha256` | `Pattern[/\A\h{64}\z/]` | SHA-256 of the GitHub archive of 3.1.6 | Checksum of the tarball; Puppet discards a download that does not match. Change it together with `acme_version`/`acme_archive_url`. |
 | `manage_packages` | `Boolean` | `true` | Installs the `git` package needed by `install_method => 'git'`. |
 | `manage_gems` | `Boolean` | `false` | Installs the `redis` gem, which the worker needs for the Redis backend only. |
 | `manage_user` | `Boolean` | `false` | Whether to create the `user`/`group` accounts (`false` to reuse an existing account). |
@@ -267,7 +267,7 @@ the source. For a worker that cannot reach GitHub, put the tarball on a local
 mirror:
 
 ```yaml
-acme_kvstore::worker::acme_archive_url: 'https://mirror.example.com/acme.sh/3.0.9.tar.gz'
+acme_kvstore::worker::acme_archive_url: 'https://mirror.example.com/acme.sh/3.1.6.tar.gz'
 acme_kvstore::worker::acme_archive_sha256: '<sha256sum of that file>'
 ```
 

@@ -352,7 +352,7 @@ Data type: `String[1]`
 acme.sh version: the version in the default archive URL for 'archive', the Git tag (or
 branch) for 'git'; pinned so updates are deliberate. A change is installed.
 
-Default value: `'3.0.9'`
+Default value: `'3.1.6'`
 
 ##### <a name="-acme_kvstore--worker--acme_git_url"></a>`acme_git_url`
 
@@ -377,7 +377,7 @@ Data type: `Pattern[/\A\h{64}\z/]`
 
 SHA-256 of the archive; the download is discarded on a mismatch.
 
-Default value: `'a599e8373cd327fb611362bec6f1bfb0bf65c97b3401c440cfea9304a0f0cb41'`
+Default value: `'0d3f9000ac44a6331314742a88c475f79134e24fc991997883652adc59efc486'`
 
 ##### <a name="-acme_kvstore--worker--manage_packages"></a>`manage_packages`
 

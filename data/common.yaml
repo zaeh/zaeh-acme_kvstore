@@ -45,12 +45,12 @@ acme_kvstore::kv_client: 'puppet'
 acme_kvstore::certificates: {}
 
 acme_kvstore::worker::install_method: 'archive'
-acme_kvstore::worker::acme_version: '3.0.9'
+acme_kvstore::worker::acme_version: '3.1.6'
 acme_kvstore::worker::acme_git_url: 'https://github.com/acmesh-official/acme.sh.git'
 # The GitHub archive of acme_version; set your own (e.g. a local mirror) to override.
 acme_kvstore::worker::acme_archive_url: "https://github.com/acmesh-official/acme.sh/archive/refs/tags/%{lookup('acme_kvstore::worker::acme_version')}.tar.gz"
-# SHA-256 of the GitHub archive of acme.sh 3.0.9; change it with acme_version.
-acme_kvstore::worker::acme_archive_sha256: 'a599e8373cd327fb611362bec6f1bfb0bf65c97b3401c440cfea9304a0f0cb41'
+# SHA-256 of the GitHub archive of acme.sh 3.1.6; change it with acme_version.
+acme_kvstore::worker::acme_archive_sha256: '0d3f9000ac44a6331314742a88c475f79134e24fc991997883652adc59efc486'
 acme_kvstore::worker::manage_packages: true
 acme_kvstore::worker::manage_gems: false
 acme_kvstore::worker::manage_user: false

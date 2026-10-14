@@ -32,11 +32,11 @@ describe 'acme_kvstore::worker' do
 
         it 'reinstalls acme.sh only when the source has another VER (no creates)' do
           is_expected.to contain_exec('acme_kvstore-install-acmesh').with(
-            'command'  => '/opt/acme.sh-3.0.9/acme.sh --install --home /root/.acme.sh --nocron',
-            'cwd'      => '/opt/acme.sh-3.0.9',
+            'command'  => '/opt/acme.sh-3.1.6/acme.sh --install --home /root/.acme.sh --nocron',
+            'cwd'      => '/opt/acme.sh-3.1.6',
             'provider' => 'shell',
             'unless'   => "test -x '/root/.acme.sh/acme.sh' && " \
-                          "[ \"$(grep -m1 '^VER=' '/opt/acme.sh-3.0.9/acme.sh')\" = \"$(grep -m1 '^VER=' '/root/.acme.sh/acme.sh')\" ]",
+                          "[ \"$(grep -m1 '^VER=' '/opt/acme.sh-3.1.6/acme.sh')\" = \"$(grep -m1 '^VER=' '/root/.acme.sh/acme.sh')\" ]",
             'creates'  => nil,
           ).that_requires('Exec[acme_kvstore-extract-acmesh]')
         end
@@ -153,23 +153,23 @@ describe 'acme_kvstore::worker' do
         it { is_expected.to compile.with_all_deps }
 
         it 'downloads the GitHub archive of acme_version, checked against the SHA-256' do
-          is_expected.to contain_file('/opt/acme.sh-3.0.9.tar.gz').with(
-            'source'         => 'https://github.com/acmesh-official/acme.sh/archive/refs/tags/3.0.9.tar.gz',
+          is_expected.to contain_file('/opt/acme.sh-3.1.6.tar.gz').with(
+            'source'         => 'https://github.com/acmesh-official/acme.sh/archive/refs/tags/3.1.6.tar.gz',
             'checksum'       => 'sha256',
-            'checksum_value' => 'a599e8373cd327fb611362bec6f1bfb0bf65c97b3401c440cfea9304a0f0cb41',
+            'checksum_value' => '0d3f9000ac44a6331314742a88c475f79134e24fc991997883652adc59efc486',
           )
         end
 
         it 'unpacks it into a directory of its own, whatever its top directory' do
           is_expected.to contain_exec('acme_kvstore-extract-acmesh').with(
-            'command' => ['tar', 'xzf', '/opt/acme.sh-3.0.9.tar.gz', '-C', '/opt/acme.sh-3.0.9', '--strip-components=1'],
-            'creates' => '/opt/acme.sh-3.0.9/acme.sh',
-          ).that_requires(['File[/opt/acme.sh-3.0.9.tar.gz]', 'File[/opt/acme.sh-3.0.9]'])
+            'command' => ['tar', 'xzf', '/opt/acme.sh-3.1.6.tar.gz', '-C', '/opt/acme.sh-3.1.6', '--strip-components=1'],
+            'creates' => '/opt/acme.sh-3.1.6/acme.sh',
+          ).that_requires(['File[/opt/acme.sh-3.1.6.tar.gz]', 'File[/opt/acme.sh-3.1.6]'])
         end
 
         it 'installs from there' do
           is_expected.to contain_exec('acme_kvstore-install-acmesh')
-            .with(command: '/opt/acme.sh-3.0.9/acme.sh --install --home /root/.acme.sh --nocron', cwd: '/opt/acme.sh-3.0.9')
+            .with(command: '/opt/acme.sh-3.1.6/acme.sh --install --home /root/.acme.sh --nocron', cwd: '/opt/acme.sh-3.1.6')
             .that_requires('Exec[acme_kvstore-extract-acmesh]')
         end
       end
@@ -219,12 +219,12 @@ describe 'acme_kvstore::worker' do
         let(:params) { { 'install_method' => 'git' } }
 
         it { is_expected.to compile.with_all_deps }
-        it { is_expected.not_to contain_file('/opt/acme.sh-3.0.9.tar.gz') }
+        it { is_expected.not_to contain_file('/opt/acme.sh-3.1.6.tar.gz') }
 
         it 'clones the tag once into a directory of its own (no fetch on later runs)' do
           is_expected.to contain_exec('acme_kvstore-clone-acmesh').with(
-            'command' => ['git', 'clone', '--depth', '1', '--branch', '3.0.9', 'https://github.com/acmesh-official/acme.sh.git', '/opt/acme.sh-git-3.0.9'],
-            'creates' => '/opt/acme.sh-git-3.0.9/acme.sh',
+            'command' => ['git', 'clone', '--depth', '1', '--branch', '3.1.6', 'https://github.com/acmesh-official/acme.sh.git', '/opt/acme.sh-git-3.1.6'],
+            'creates' => '/opt/acme.sh-git-3.1.6/acme.sh',
           )
         end
 
@@ -232,7 +232,7 @@ describe 'acme_kvstore::worker' do
 
         it 'installs from the clone' do
           is_expected.to contain_exec('acme_kvstore-install-acmesh')
-            .with(command: '/opt/acme.sh-git-3.0.9/acme.sh --install --home /root/.acme.sh --nocron', cwd: '/opt/acme.sh-git-3.0.9')
+            .with(command: '/opt/acme.sh-git-3.1.6/acme.sh --install --home /root/.acme.sh --nocron', cwd: '/opt/acme.sh-git-3.1.6')
             .that_requires('Exec[acme_kvstore-clone-acmesh]')
         end
       end

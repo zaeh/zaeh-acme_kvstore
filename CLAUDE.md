@@ -108,7 +108,7 @@ PDK are deliberately not part of CI. Keep the matrix in step with the lanes abov
 
 Acceptance tests (`spec/acceptance/`, not Litmus) run against real services in containers from
 `spec/acceptance/compose.yml` - Consul with ACLs, Redis with ACL users, and Pebble (Let's Encrypt's
-test CA, `PEBBLE_VA_ALWAYS_VALID`) - with the real providers, KV clients and acme.sh 3.0.9 (tarball,
+test CA, `PEBBLE_VA_ALWAYS_VALID`) - with the real providers, KV clients and acme.sh 3.1.6 (tarball,
 SHA-256 pinned in `acceptance_helper.rb`): `bundle exec rake acceptance` (up, run, down; needs Docker
 with compose). They are deliberately outside `rake spec`'s pattern (which includes `spec/integration/`).
 Rules: pin image versions; credentials are generated per run or throwaway test values; each run
@@ -347,7 +347,8 @@ warns. OpenVox 9 is deliberately not covered there (build time); its server JRub
   acme.sh's own documentation before being added; `--dnssleep` (which also disables acme.sh's own
   public DNS polling), `--log`, `--log-level` (1 or 2 only), `--webroot` and `--force` (which `--issue`
   needs: without it acme.sh skips with exit 2 while its own renewal date is ahead) were verified against
-  the acme.sh 3.0.9 source, as was `dns_nsupdate` expecting `NSUPDATE_KEY` to be a key *file path*,
+  the acme.sh 3.0.9 source and again for 3.1.6 (option parsing identical; `issue` still skips only
+  without `--force`), as was `dns_nsupdate` expecting `NSUPDATE_KEY` to be a key *file path*,
   and `_findHook` looking in `<home>/dnsapi/<hook>.sh` first, then sourcing it (read access
   suffices) and calling `<hook>_add`/`<hook>_rm` (basis of `acme_kvstore::dnsapi_scripts`).
   Verify before adding another, and say so.
