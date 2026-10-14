@@ -20,6 +20,22 @@ describe PuppetX::AcmeKvstore::ConsulClient do
     instance_double(Net::HTTPResponse, code: code.to_s, body:)
   end
 
+  describe 'TLS files' do
+    it 'fails with a hint where the file is read when ca_file is missing' do
+      tls_client = described_class.new('url' => 'https://consul.example.com:8501', 'ca_file' => '/nonexistent/ca.pem')
+      expect(http_double).not_to receive(:request)
+
+      expect { tls_client.read_multi_with_index(['acme/web/certids/x']) }
+        .to raise_error(described_class::Error, %r{Consul ca_file '/nonexistent/ca.pem' cannot be read on this host .*Puppet server})
+    end
+
+    it 'fails the same way for a missing key_file' do
+      tls_client = described_class.new('url' => 'https://consul.example.com:8501', 'key_file' => '/nonexistent/client.key')
+      expect { tls_client.read_multi_with_index(['acme/web/certids/x']) }
+        .to raise_error(described_class::Error, %r{Consul key_file '/nonexistent/client.key'})
+    end
+  end
+
   describe '#read_multi_with_index' do
     it 'issues a single transaction request and returns value + ModifyIndex per key' do
       body = {

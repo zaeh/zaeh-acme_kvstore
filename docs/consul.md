@@ -33,6 +33,39 @@ exclusively the **Transaction API** (`PUT /v1/txn`):
   key) are written in **one** atomic, compare-and-set
   protected transaction - either every change is applied, or none is.
 
+## TLS files
+
+`ca_file`, `cert_file` and `key_file` are read by the process that runs the
+Consul client, **on the host where it runs** - not by acme.sh:
+
+| Where | Process | User |
+| --- | --- | --- |
+| ACME worker (`acme_kvstore_certificate`) | Puppet agent | `root` (the worker `user` only runs acme.sh) |
+| Puppet server (`acme_kvstore::deploy`, `acme_kvstore::lookup_cert`) | the server while compiling | `puppet` (the official container image: `puppet`, group `0`) |
+| Nodes with `acme_kvstore_cert_data` | Puppet agent | `root` |
+
+`deploy` takes the connection settings from the Hiera data of the node it
+compiles for, but reads the files on the **server** - so the paths must exist
+there too: on every compiler, and inside the container if the server runs in
+one. Suggested ownership:
+
+| File | Content | Worker | Puppet server |
+| --- | --- | --- | --- |
+| `ca_file` | public CA certificate | `root:root 0644` | `root:root 0644` |
+| `cert_file` | public client certificate (mTLS) | `root:root 0644` | `root:root 0644` |
+| `key_file` | **private** client key (mTLS) | `root:root 0600` | `root:puppet 0640` (container image: `root:root 0640`) |
+
+The directories on the way must be searchable (`x`) for that user. A file
+that cannot be read fails with a message naming the setting, the path and
+the user, e.g. `Consul ca_file '/opt/acme/certs/ca.pem' cannot be read on this
+host as user 'puppet' (ENOENT)`.
+
+With mTLS, the server would otherwise use the worker's client key. To give
+it a certificate of its own, set `cert_file`/`key_file` in the Hiera data of
+the consumer nodes to the server's files and in the worker's to the worker's.
+What a client may read or write is still decided by the area's
+token; mTLS only secures the connection.
+
 ## Compare-and-set (CAS)
 
 Every write goes through `ConsulClient#transactional_update`, which reads

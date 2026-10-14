@@ -6,6 +6,7 @@ require 'uri'
 require 'json'
 require 'base64'
 require 'openssl'
+require_relative 'tls_files'
 
 module PuppetX::AcmeKvstore
   # Consul KV client using only the transaction API (/v1/txn): any number
@@ -168,9 +169,10 @@ module PuppetX::AcmeKvstore
     def configure_tls(http)
       return unless http.use_ssl?
 
-      http.ca_file = @tls['ca_file'] if @tls['ca_file']
-      http.cert = OpenSSL::X509::Certificate.new(File.read(@tls['cert_file'])) if @tls['cert_file']
-      http.key = OpenSSL::PKey.read(File.read(@tls['key_file'])) if @tls['key_file']
+      file = ->(setting) { { setting:, backend: 'Consul', error_class: Error } }
+      http.ca_file = TlsFiles.check(@tls['ca_file'], **file.call('ca_file')) if @tls['ca_file']
+      http.cert = OpenSSL::X509::Certificate.new(TlsFiles.read(@tls['cert_file'], **file.call('cert_file'))) if @tls['cert_file']
+      http.key = OpenSSL::PKey.read(TlsFiles.read(@tls['key_file'], **file.call('key_file'))) if @tls['key_file']
       http.verify_mode = @tls['insecure'] ? OpenSSL::SSL::VERIFY_NONE : OpenSSL::SSL::VERIFY_PEER
     end
 

@@ -8,6 +8,7 @@ rescue LoadError
 end
 require 'json'
 require 'openssl'
+require_relative 'tls_files'
 
 module PuppetX::AcmeKvstore
   # Redis KV client: MGET for reads, MULTI/EXEC for atomic writes and
@@ -142,9 +143,10 @@ module PuppetX::AcmeKvstore
 
     def build_ssl_params(config)
       params = {}
-      params[:ca_file] = config['ca_file'] if config['ca_file']
-      params[:cert] = OpenSSL::X509::Certificate.new(File.read(config['cert_file'])) if config['cert_file']
-      params[:key] = OpenSSL::PKey.read(File.read(config['key_file'])) if config['key_file']
+      file = ->(setting) { { setting:, backend: 'Redis', error_class: Error } }
+      params[:ca_file] = TlsFiles.check(config['ca_file'], **file.call('ca_file')) if config['ca_file']
+      params[:cert] = OpenSSL::X509::Certificate.new(TlsFiles.read(config['cert_file'], **file.call('cert_file'))) if config['cert_file']
+      params[:key] = OpenSSL::PKey.read(TlsFiles.read(config['key_file'], **file.call('key_file'))) if config['key_file']
       params[:verify_mode] = config['insecure'] ? OpenSSL::SSL::VERIFY_NONE : OpenSSL::SSL::VERIFY_PEER
       params
     end

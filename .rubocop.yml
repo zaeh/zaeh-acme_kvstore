@@ -24,6 +24,11 @@ AllCops:
     - 'pkg/**/*'
     - 'spec/fixtures/**/*'
 
+# Code below lib/ also runs on the Puppet server's JRuby 9.4 (Ruby 3.1), which
+# rejects anonymous */** argument forwarding (Ruby 3.2); rake jruby:compat parses lib/.
+Style/ArgumentsForwarding:
+  UseAnonymousForwarding: false
+
 # Matches puppet-lint's limit.
 Layout/LineLength:
   Max: 140

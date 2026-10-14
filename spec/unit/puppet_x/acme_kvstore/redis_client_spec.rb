@@ -1,6 +1,7 @@
 # frozen_string_literal: true
 
 require 'spec_helper'
+require 'tmpdir'
 require 'puppet_x/acme_kvstore/redis_client'
 
 # A minimal in-memory stand-in for the real Redis client, faithfully
@@ -91,6 +92,17 @@ describe PuppetX::AcmeKvstore::RedisClient do
     it 'passes no username when none is configured' do
       expect(Redis).to receive(:new).with(hash_not_including(:username))
       described_class.new('host' => 'redis.example.com')
+    end
+
+    it 'passes a readable ca_file on, and fails with a hint where the file is read when it is missing' do
+      Dir.mktmpdir('acme_kvstore-tls') do |dir|
+        ca = File.join(dir, 'ca.pem').tap { |file| File.write(file, 'PEM') }
+        expect(Redis).to receive(:new).with(hash_including(ssl: true, ssl_params: hash_including(ca_file: ca)))
+        described_class.new('host' => 'redis.example.com', 'tls' => true, 'ca_file' => ca)
+      end
+
+      expect { described_class.new('host' => 'redis.example.com', 'tls' => true, 'ca_file' => '/nonexistent/ca.pem') }
+        .to raise_error(described_class::Error, %r{Redis ca_file '/nonexistent/ca.pem' cannot be read on this host .*Puppet server})
     end
 
     it 'loads a gem installed after this file was loaded (same Puppet run)' do

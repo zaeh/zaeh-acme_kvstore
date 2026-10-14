@@ -112,6 +112,17 @@ def run_checks(dir)
     store.verify(OpenSSL::X509::Certificate.new(MOCK.leaf_pem('shop.example.com')), [OpenSSL::X509::Certificate.new(MOCK.pki[:intermediate_pem])])
   end
 
+  # The server loads every file below lib/; its JRuby 9.4 is Ruby 3.1.
+  if defined?(JRUBY_VERSION)
+    require 'jruby'
+    Dir[File.expand_path('../lib/**/*.rb', __dir__)].each do |file|
+      check.call("syntax: #{file.delete_prefix("#{File.expand_path('..', __dir__)}/")}") do
+        JRuby.parse(File.read(file), file)
+        true
+      end
+    end
+  end
+
   check.call('decrypt MRI envelope (AES-256-GCM + AAD)') { CRYPTO.decrypt(f['envelope'], secret, aad: AAD) == f['leaf_key'] }
   check.call('reject envelope under another version') do
     CRYPTO.decrypt(f['envelope'], secret, aad: CRYPTO.aad('web', 'shop-example-com', 3))

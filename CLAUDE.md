@@ -289,6 +289,9 @@ warns. OpenVox 9 is deliberately not covered there (build time); its server JRub
   OpenSSL features jruby-openssl supports; that is why the DH groups are static files and PEM
   bundles are split with a regex. Mind the differences: `X509::Name#to_a` returns raw bytes under
   MRI but already decoded UTF-8 under JRuby (see `KvDocument.name_text`). With Redis, the server needs `puppetserver gem install redis`.
+  JRuby 9.4 is **Ruby 3.1**: code below `lib/` must not use 3.2-only syntax such as anonymous `*`/`**`
+  argument forwarding (RuboCop's `UseAnonymousForwarding` is off for that reason); `rake jruby:compat`
+  parses every file below `lib/` with the server's JRuby.
 - **Mock mode of `deploy`** (`MockCert`, function `mock_cert`, PKI in `files/mock` from
   `rake mock:pki`): the leaf per certid must stay byte-identical on every compilation and on MRI and
   JRuby alike (checked by `rake jruby:compat` and the E2E consumer) - fixed dates and leaf key, serial
@@ -329,6 +332,10 @@ warns. OpenVox 9 is deliberately not covered there (build time); its server JRub
   only, under `/usr`), and `certificate.pp` runs `<home>/acme.sh`. The install exec has no `creates`
   but an `unless` comparing the `VER=` lines of source and installed script, so a changed
   `acme_version` is installed; files cannot be compared because `--install` rewrites the shebang.
+- **TLS files of the KV clients** (`ca_file`/`cert_file`/`key_file`) are read by the process
+  running the client: the agent (root) on a worker, the server (user `puppet`) for
+  `lookup_cert`/`deploy`, with the paths from the compiled node's Hiera. `TlsFiles` checks them and
+  names host user and docs anchor (`docs/consul.md#tls-files`, `docs/redis.md#tls-files`) on failure.
 - **The `redis` gem may arrive mid-run**: `acme_kvstore::worker` installs it with `puppet_gem`, so
   `RedisClient.load_gem` retries the `require` (after `Gem.clear_paths`) instead of trusting the
   load-time attempt.
