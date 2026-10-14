@@ -112,8 +112,11 @@ test CA, `PEBBLE_VA_ALWAYS_VALID`) - with the real providers, KV clients and acm
 SHA-256 pinned in `acceptance_helper.rb`): `bundle exec rake acceptance` (up, run, down; needs Docker
 with compose). They are deliberately outside `rake spec`'s pattern (which includes `spec/integration/`).
 Rules: pin image versions; credentials are generated per run or throwaway test values; each run
-needs fresh containers (the helper creates ACL policies/users once). Pebble's default profile issues
-6-day certificates, so the specs use `renew_before_days: 1`. Consul hides keys a token may not read
+needs fresh containers (the helper creates ACL policies/users once). Without a requested profile,
+Pebble picks one of its profiles at random (`default` 90 days, `shortlived` 6 days), so the specs use
+`renew_before_days: 1`. Pebble runs with `spec/acceptance/pebble-config.json` - its own config with
+`retryAfter` 1s instead of 3s/5s, which acme.sh 3.1 waits for on every order. Keep slow paths out of
+per-backend loops: acme.sh retries an unreachable directory 10 times, 10s apart. Consul hides keys a token may not read
 (reads return nothing), while Redis refuses them with `NOPERM`.
 
 End-to-end tests (`spec/acceptance/e2e/`, compose profile `e2e`, `bundle exec rake acceptance:e2e`,

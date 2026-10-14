@@ -118,9 +118,15 @@ require_relative 'acceptance_helper'
         provider(ca_bundles: [other, AcceptanceEnv.pebble_ca], account_email: 'pki@example.test').create
         expect(read("web/certids/#{certid}")).to include('active_version' => 1)
 
-        # Without ca_bundles, acme.sh must not reach Pebble: no CA_BUNDLE was kept.
-        expect { provider(renew_before_days: 3650).create }.to raise_error(PuppetX::AcmeKvstore::Acmesh::Error)
         expect(File.read(File.join(File.dirname(AcceptanceEnv.acmesh_path), 'account.conf'))).not_to match(%r{^CA_BUNDLE=})
+
+        # Without ca_bundles, acme.sh must not reach Pebble: no CA_BUNDLE was kept. acme.sh retries
+        # the directory 10 times, 10s apart; a kept bundle would issue within seconds instead.
+        # Independent of the KV backend, so checked once.
+        if kv_backend == :consul
+          expect { provider(renew_before_days: 3650, exec_timeout: 25).create }
+            .to raise_error(PuppetX::AcmeKvstore::Acmesh::Error, %r{timed out after 25 seconds})
+        end
       ensure
         ENV['CA_BUNDLE'] = exported
       end

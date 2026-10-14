@@ -29,6 +29,11 @@ services:
 
   pebble:
     image: ghcr.io/letsencrypt/pebble:2.10.1
+    # Pebble's own test/config/pebble-config.json, but with retryAfter 1s
+    # (instead of 3s/5s), which acme.sh 3.1 waits for on every order.
+    command: [-config, /etc/pebble/pebble-config.json]
+    volumes:
+      - ./pebble-config.json:/etc/pebble/pebble-config.json:ro
     environment:
       PEBBLE_VA_ALWAYS_VALID: '1'
       PEBBLE_VA_NOSLEEP: '1'
