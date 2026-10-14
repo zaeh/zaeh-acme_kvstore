@@ -63,7 +63,7 @@
     "acme.sh",
     "cas"
   ],
-  "pdk-version": "3.8.0",
-  "template-url": "https://github.com/puppetlabs/pdk-templates#3.8.0",
-  "template-ref": "tags/3.8.0-0-gf1124a6"
+  "pdk-version": "4.0.1",
+  "template-url": "https://github.com/puppetlabs/pdk-templates#4.0.1",
+  "template-ref": "tags/4.0.1-0-g826bc75"
 }
