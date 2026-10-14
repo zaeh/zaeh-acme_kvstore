@@ -11,7 +11,8 @@ Puppet::Functions.create_function(:'acme_kvstore::request_cert') do
   # @param options Optional settings: key_type, key_size, server, dns_provider, dns_env, dns_options,
   #   challenge_alias, domain_alias, account_email, eab_kid, eab_hmac_key, proxy,
   #   exec_timeout, run_as_user, run_as_group, run_as_home, acmesh_path, dnssleep (default 60), webroot,
-  #   log_file, log_level, ca_bundles (files of CA certificates acme.sh trusts instead of the system store).
+  #   log_file, log_level, ca_bundles (files of CA certificates acme.sh trusts instead of the system store),
+  #   valid_days (requested lifetime, notAfter), acme_profile (ACME profile).
   # @return Hash with the keys 'cert', 'chain', 'fullchain', 'key' (PEM strings or undef).
   dispatch :request_cert do
     param 'Array[String[1]]', :domains
@@ -44,6 +45,8 @@ Puppet::Functions.create_function(:'acme_kvstore::request_cert') do
       log_file: options['log_file'],
       log_level: options['log_level'],
       ca_bundles: options['ca_bundles'] || [],
+      valid_days: options['valid_days'],
+      acme_profile: options['acme_profile'],
     )
     result.transform_keys(&:to_s)
   end

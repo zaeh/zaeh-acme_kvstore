@@ -88,6 +88,41 @@ describe Puppet::Type.type(:acme_kvstore_certificate).provider(:consul) do
       expect(provider.exists?).to be(true)
     end
 
+    describe 'requested lifetime and ACME profile' do
+      it 'is no drift when neither the summary nor the configuration has them (certificates from before)' do
+        stub_meta(active_meta)
+        expect(provider.exists?).to be(true)
+      end
+
+      it 'is no drift while they match' do
+        stub_meta(active_meta(summary.merge('valid_days' => 30, 'acme_profile' => 'shortlived')))
+        expect(provider_for(valid_days: 30, acme_profile: 'shortlived').exists?).to be(true)
+      end
+
+      {
+        'a changed lifetime' => [{ 'valid_days' => 30 }, { valid_days: 45 }],
+        'a newly requested lifetime' => [{}, { valid_days: 30 }],
+        'a lifetime no longer requested' => [{ 'valid_days' => 30 }, {}],
+        'a changed ACME profile' => [{ 'acme_profile' => 'classic' }, { acme_profile: 'shortlived' }],
+        'a newly requested ACME profile' => [{}, { acme_profile: 'shortlived' }],
+      }.each do |change, (recorded, configured)|
+        it "reissues at once for #{change}" do
+          stub_meta(active_meta(summary.merge(recorded)))
+          expect(provider_for(**configured).exists?).to be(false)
+        end
+      end
+
+      it 'reissues a changed lifetime even outside the renew_schedule window' do
+        stub_meta(active_meta(summary.merge('valid_days' => 30)))
+        catalog = Puppet::Resource::Catalog.new
+        catalog.add_resource(Puppet::Type.type(:schedule).new(name: 'nightly', weekday: ((Time.now.wday + 1) % 7).to_s))
+        scheduled = provider_for(renew_schedule: 'nightly', valid_days: 45)
+        catalog.add_resource(scheduled.resource)
+
+        expect(scheduled.exists?).to be(false)
+      end
+    end
+
     it 'never renews an entry archived in CCI-UI' do
       stub_meta(active_meta(summary(not_after: Time.now + (10 * 86_400)), status: 'delete').merge('archived' => true))
       expect(Puppet).to receive(:info).with(%r{archived \(CCI-UI\); not renewing it})
@@ -125,6 +160,14 @@ describe Puppet::Type.type(:acme_kvstore_certificate).provider(:consul) do
           cert_key => { 'pem' => build_pem(not_after: Time.now + (200 * 86_400)) },
         )
         expect(checker.exists?).to be(false)
+      end
+
+      it 'cannot know the lifetime requested for the active version, so that is no drift' do
+        stub_meta(meta_with_active(3))
+        expect(kv_client).to receive(:read_multi).with([cert_key]).and_return(
+          cert_key => { 'pem' => AcmeKvstoreSpecPki.chain(leaf_not_after: Time.now + (200 * 86_400))[:leaf].to_pem },
+        )
+        expect(provider_for(purge_key_on_mismatch: false, valid_days: 30, acme_profile: 'shortlived').exists?).to be(true)
       end
 
       it 'does not read again while acme_renewal describes the active version' do
@@ -505,6 +548,42 @@ describe Puppet::Type.type(:acme_kvstore_certificate).provider(:consul) do
         meta = block.call(active_meta(version: 2, status: 'norollout').merge('note' => 'kept'))['web/certids/shop-example-com']
 
         expect(meta).to include('status' => 'norollout', 'note' => 'kept', 'active_version' => 3, 'latest_version' => 3)
+        true
+      end
+
+      provider.create
+    end
+  end
+
+  describe '#create with a requested lifetime and ACME profile' do
+    def expect_summary(**fields)
+      expect(kv_client).to receive(:transactional_update) do |*_args, &block|
+        expect(block.call(nil)['web/certids/shop-example-com']['acme_renewal']).to include(fields)
+        true
+      end
+    end
+
+    it 'passes them to acme.sh and records them in acme_renewal' do
+      expect(PuppetX::AcmeKvstore::Acmesh).to receive(:issue_or_renew).with(hash_including(valid_days: 90, acme_profile: 'shortlived'))
+                                                                      .and_return(issued(cert: build_pem(not_after: Time.now + (90 * 86_400))))
+      expect_summary('valid_days' => 90, 'acme_profile' => 'shortlived')
+      expect(Puppet).not_to receive(:warning)
+
+      provider_for(valid_days: 90, acme_profile: 'shortlived').create
+    end
+
+    it 'warns when the CA issued another lifetime than requested (e.g. it ignores notAfter)' do
+      allow(PuppetX::AcmeKvstore::Acmesh).to receive(:issue_or_renew).and_return(issued(cert: build_pem(not_after: Time.now + (180 * 86_400))))
+      expect_summary('valid_days' => 30)
+      expect(Puppet).to receive(:warning).with(%r{requested 30 days, but the CA issued 180\.0 days})
+
+      provider_for(valid_days: 30).create
+    end
+
+    it 'passes neither and records neither without them' do
+      expect(PuppetX::AcmeKvstore::Acmesh).to receive(:issue_or_renew).with(hash_including(valid_days: nil, acme_profile: nil)).and_return(issued)
+      expect(kv_client).to receive(:transactional_update) do |*_args, &block|
+        expect(block.call(nil)['web/certids/shop-example-com']['acme_renewal'].keys).not_to include('valid_days', 'acme_profile')
         true
       end
 

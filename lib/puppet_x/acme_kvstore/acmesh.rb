@@ -32,7 +32,8 @@ module PuppetX::AcmeKvstore
                             challenge_alias:, domain_alias:, account_email:, eab_kid:, eab_hmac_key:, acmesh_path:,
                             proxy: nil, exec_timeout: nil,
                             run_as_user: nil, run_as_group: nil, run_as_home: nil,
-                            dnssleep: nil, webroot: DEFAULT_WEBROOT, log_file: nil, log_level: nil, ca_bundles: [])
+                            dnssleep: nil, webroot: DEFAULT_WEBROOT, log_file: nil, log_level: nil, ca_bundles: [],
+                            valid_days: nil, acme_profile: nil)
       domains = Array(domains)
       raise Error, 'at least one domain is required' if domains.empty?
       raise Error, "acme.sh not found or not executable: #{acmesh_path}" unless File.executable?(acmesh_path)
@@ -61,7 +62,7 @@ module PuppetX::AcmeKvstore
         cmd = build_command(
           acmesh_path, domains, key_type, key_size, server, dns_provider,
           challenge_alias, domain_alias, paths,
-          dnssleep:, webroot:
+          dnssleep:, webroot:, valid_days:, acme_profile:
         ) + log_args
         env = build_env(dns_env, dns_options, proxy, run_as_home)
         _out, err, status = run_acmesh(env, cmd, ca_bundle:, timeout:, run_as_user:, run_as_group:)
@@ -106,7 +107,7 @@ module PuppetX::AcmeKvstore
     end
 
     def self.build_command(acmesh_path, domains, key_type, key_size, server, dns_provider,
-                           challenge_alias, domain_alias, paths, dnssleep:, webroot:)
+                           challenge_alias, domain_alias, paths, dnssleep:, webroot:, valid_days: nil, acme_profile: nil)
       # --force: this module decides when to issue (renewal window, drift);
       # without it acme.sh skips (exit 2) while its own renewal date is ahead.
       cmd = [acmesh_path, '--issue', '--force', '--server', server] + home_args(acmesh_path)
@@ -122,6 +123,7 @@ module PuppetX::AcmeKvstore
       end
 
       cmd += key_length_args(key_type, key_size)
+      cmd += lifetime_args(valid_days, acme_profile)
       cmd += [
         '--cert-file', paths[:cert],
         '--key-file', paths[:key],
@@ -136,6 +138,15 @@ module PuppetX::AcmeKvstore
 
       args = ['--log', log_file.to_s]
       args += ['--log-level', log_level.to_s] if log_level && !log_level.to_s.empty?
+      args
+    end
+
+    # The CA decides without either. --valid-to sends notAfter (relative "+<n>d"),
+    # --cert-profile an ACME profile (acme.sh >= 3.1.2); verified in 3.1.6.
+    def self.lifetime_args(valid_days, acme_profile)
+      args = []
+      args += ['--valid-to', "+#{Integer(valid_days)}d"] unless valid_days.nil? || valid_days.to_s.empty?
+      args += ['--cert-profile', acme_profile.to_s] unless acme_profile.nil? || acme_profile.to_s.empty?
       args
     end
 
@@ -299,7 +310,7 @@ module PuppetX::AcmeKvstore
       File.chown(uid, gid, dir)
     end
 
-    private_class_method :build_command, :key_length_args, :log_args, :build_env, :read_if_present, :chown_to_run_as_user,
+    private_class_method :build_command, :key_length_args, :lifetime_args, :log_args, :build_env, :read_if_present, :chown_to_run_as_user,
                          :ensure_account_registered, :run_with_timeout, :terminate, :process_alive?,
                          :account_conf_path, :home_args, :forget_saved_settings, :ca_bundle_args, :run_acmesh,
                          :join_ca_bundles

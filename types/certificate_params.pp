@@ -27,4 +27,6 @@ type Acme_kvstore::Certificate_params = Struct[{
   Optional['proxy']                 => String[1],
   Optional['exec_timeout']          => Integer[1],
   Optional['renew_schedule']        => String[1],
+  Optional['valid_days']            => Integer[1],
+  Optional['acme_profile']          => String[1],
 }]

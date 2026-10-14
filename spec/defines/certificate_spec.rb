@@ -331,6 +331,91 @@ describe 'acme_kvstore::certificate' do
         end
       end
 
+      context 'with a requested lifetime' do
+        let(:facts) { worker_facts }
+        let(:params) { super().merge(cert_params) }
+        let(:pre_condition) do
+          <<~PUPPET
+            class { 'acme_kvstore':
+              backend            => 'consul',
+              consul             => { 'url' => 'https://consul.example.com:8501' },
+              areas              => { 'web' => { 'secret' => '#{'S' * 32}', 'consul_token' => 'web-token' } },
+              default_worker     => 'worker1.example.com',
+              ca_profiles        => {
+                'stepca'      => { 'directory_url' => 'https://ca.example.com/acme/acme/directory' } + #{stepca.inspect.gsub('=>', ' => ')},
+                'letsencrypt' => #{letsencrypt.inspect.gsub('=>', ' => ')},
+              },
+              ca_whitelist       => ['stepca', 'letsencrypt'],
+              default_ca_profile => 'stepca',
+              valid_days         => #{global_days.nil? ? 'undef' : global_days},
+            }
+          PUPPET
+        end
+
+        # Variants override these methods.
+        def stepca = { 'min_valid_days' => 1, 'max_valid_days' => 90 }
+        def letsencrypt = {}
+        def global_days = nil
+        def cert_params = {}
+
+        it 'requests nothing by default: the CA decides' do
+          is_expected.to contain_acme_kvstore_certificate('shop-example-com').with(valid_days: nil, acme_profile: nil)
+        end
+
+        context 'set on the certificate' do
+          def cert_params = { 'valid_days' => 30, 'acme_profile' => 'tlsserver', 'renew_before_days' => 10 }
+
+          it { is_expected.to contain_acme_kvstore_certificate('shop-example-com').with(valid_days: 30, acme_profile: 'tlsserver') }
+        end
+
+        context 'from the CA profile, then from acme_kvstore' do
+          def stepca = super.merge('valid_days' => 60, 'acme_profile' => 'shortlived')
+          def global_days = 14
+          def cert_params = { 'renew_before_days' => 10 }
+
+          it { is_expected.to contain_acme_kvstore_certificate('shop-example-com').with(valid_days: 60, acme_profile: 'shortlived') }
+        end
+
+        context 'from acme_kvstore only' do
+          def global_days = 14
+          def cert_params = { 'renew_before_days' => 5 }
+
+          it { is_expected.to contain_acme_kvstore_certificate('shop-example-com').with_valid_days(14) }
+        end
+
+        context 'above max_valid_days' do
+          def cert_params = { 'valid_days' => 120 }
+
+          it { is_expected.to compile.and_raise_error(%r{valid_days 120 is above max_valid_days 90 of CA profile 'stepca'}) }
+        end
+
+        context 'below min_valid_days' do
+          def stepca = { 'min_valid_days' => 7, 'max_valid_days' => 90 }
+          def cert_params = { 'valid_days' => 3, 'renew_before_days' => 1 }
+
+          it { is_expected.to compile.and_raise_error(%r{valid_days 3 is below min_valid_days 7 of CA profile 'stepca'}) }
+        end
+
+        context 'not longer than renew_before_days' do
+          def cert_params = { 'valid_days' => 30 }
+
+          it { is_expected.to compile.and_raise_error(%r{renew_before_days 30 must be lower than valid_days 30}) }
+        end
+
+        context 'with a CA that declares no limits (e.g. Let\'s Encrypt)' do
+          def cert_params = { 'valid_days' => 60, 'use_ca_profile' => 'letsencrypt' }
+
+          it { is_expected.to compile.and_raise_error(%r{CA profile 'letsencrypt' declares no min_valid_days/max_valid_days.*use acme_profile there}) }
+        end
+
+        context 'with an ACME profile at such a CA' do
+          def letsencrypt = { 'acme_profile' => 'shortlived' }
+          def cert_params = { 'use_ca_profile' => 'letsencrypt' }
+
+          it { is_expected.to contain_acme_kvstore_certificate('shop-example-com').with(acme_profile: 'shortlived', valid_days: nil) }
+        end
+      end
+
       context 'with a CA profile that is not in the whitelist' do
         let(:facts) { worker_facts }
         let(:params) { super().merge('use_ca_profile' => 'zerossl') }

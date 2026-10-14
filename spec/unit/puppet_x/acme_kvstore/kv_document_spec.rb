@@ -41,6 +41,15 @@ describe PuppetX::AcmeKvstore::KvDocument do
     end
   end
 
+  describe '.renewal_summary' do
+    it 'records a requested lifetime and ACME profile only when given' do
+      base = { not_after: Time.utc(2026, 12, 20, 10), domains: ['shop.example.com'], key_type: :ec, key_size: 256 }
+      expect(described_class.renewal_summary(**base, valid_days: 30, acme_profile: 'shortlived'))
+        .to include('valid_days' => 30, 'acme_profile' => 'shortlived')
+      expect(described_class.renewal_summary(**base).keys).to contain_exactly('not_after', 'domains', 'key_type', 'key_size')
+    end
+  end
+
   describe '.certificate' do
     it 'always contains pem, tags (empty), has_key, created_at and client - the fields CCI-UI requires' do
       doc = described_class.certificate(

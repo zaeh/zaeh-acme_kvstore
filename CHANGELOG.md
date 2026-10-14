@@ -54,6 +54,11 @@ Initial development version, not released yet.
 - `acme_kvstore::deploy` mock mode (`mock`, or `acme_kvstore::deploy::mock`
   in Hiera) for tests: no KV access, a stable fake certificate per certid
   from a mock PKI valid until 2099; also as `acme_kvstore::mock_cert`.
+- Certificate lifetime: `valid_days` (requested `notAfter`, for CAs such as
+  step-ca or Google Trust Services, checked against the CA profile's
+  `min_valid_days`/`max_valid_days` at compile time) and `acme_profile`
+  (ACME profiles such as Let's Encrypt's `shortlived`); per certificate, CA
+  profile or globally; a change reissues at once.
 - Typed parameters (`types/`), defaults in module Hiera data with
   deep-merged hashes.
 - Tests: rspec-puppet/RuboCop/puppet-lint via voxpupuli-test on OpenVox 8

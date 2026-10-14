@@ -42,6 +42,9 @@
 # @param kv_updated_by
 #   Value of the 'updated_by'/'created_by' fields in the KV documents;
 #   undef: the FQDN of the writing worker.
+# @param valid_days
+#   Default lifetime in days requested from the CA (notAfter); only for CA
+#   profiles declaring min_valid_days/max_valid_days. undef: the CA decides.
 class acme_kvstore (
   # KV store
   Enum['consul', 'redis']                                          $backend,
@@ -83,6 +86,7 @@ class acme_kvstore (
   Optional[String[1]]                                              $proxy               = undef,
   Optional[String[1]]                                              $renew_schedule      = undef,
   Optional[String[1, 255]]                                         $kv_updated_by       = undef,
+  Optional[Integer[1]]                                             $valid_days          = undef,
 ) {
   if $backend == 'consul' and empty($consul) {
     fail('acme_kvstore: $backend = \'consul\', but $consul has not been configured')
@@ -121,6 +125,24 @@ class acme_kvstore (
   }
   unless $ca_profiles[$default_ca_profile] {
     fail("acme_kvstore: \$default_ca_profile '${default_ca_profile}' is not a key in \$ca_profiles")
+  }
+
+  # A requested lifetime needs a CA that accepts it, within its limits.
+  $ca_profiles.each |$ca_name, $ca_profile| {
+    $min = $ca_profile['min_valid_days']
+    $max = $ca_profile['max_valid_days']
+    if $min =~ NotUndef and $max =~ NotUndef and $min > $max {
+      fail("acme_kvstore: CA profile '${ca_name}': min_valid_days (${min}) is greater than max_valid_days (${max})")
+    }
+    $profile_days = $ca_profile['valid_days']
+    if $profile_days =~ NotUndef {
+      if $min =~ Undef and $max =~ Undef {
+        fail("acme_kvstore: CA profile '${ca_name}' sets valid_days but declares no min_valid_days/max_valid_days (a requested lifetime needs a CA that accepts notAfter)")
+      }
+      if ($min =~ NotUndef and $profile_days < $min) or ($max =~ NotUndef and $profile_days > $max) {
+        fail("acme_kvstore: CA profile '${ca_name}': valid_days (${profile_days}) is outside min_valid_days/max_valid_days")
+      }
+    }
   }
 
   # CA certificates come either as PEM or as a file, never both.

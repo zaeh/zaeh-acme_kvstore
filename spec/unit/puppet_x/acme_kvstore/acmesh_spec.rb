@@ -105,6 +105,24 @@ describe PuppetX::AcmeKvstore::Acmesh do
       calls.each { |call| expect(call[:args].each_cons(2)).to include(['--home', '/root/.acme.sh']) }
     end
 
+    it 'requests a lifetime and an ACME profile only for the issuance, and only when given' do
+      calls = []
+      stub_popen3(calls)
+      described_class.issue_or_renew(**base_args, account_email: 'pki@example.com', valid_days: 30, acme_profile: 'shortlived')
+
+      register, issue = calls.map { |call| call[:args] }
+      expect(issue.each_cons(2)).to include(['--valid-to', '+30d'], ['--cert-profile', 'shortlived'])
+      expect(register).not_to include('--valid-to', '--cert-profile')
+    end
+
+    it 'sends neither without valid_days and acme_profile (the CA decides)' do
+      calls = []
+      stub_popen3(calls)
+      described_class.issue_or_renew(**base_args)
+
+      expect(calls.first[:args]).not_to include('--valid-to', '--cert-profile')
+    end
+
     it 'always forces the issuance (the module decides when, not acme.sh)' do
       calls = []
       stub_popen3(calls)
