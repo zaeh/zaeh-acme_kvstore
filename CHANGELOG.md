@@ -46,6 +46,7 @@ Initial development version, not released yet.
   once per `acme_version` and needs no access to the source afterwards.
   A changed version is installed; `manage_home`; the `redis` gem only with
   `manage_gems` (default `false`). No dependency on puppetlabs/vcsrepo.
+  Default acme.sh version: 3.1.6.
 - CA and DNS profiles can bring the CA certificates acme.sh trusts
   (`ca_certificates` as PEM, or `ca_bundle` as a file on the worker), e.g.
   for a private step-ca or an internal DNS API; joined per certificate, with
@@ -53,6 +54,11 @@ Initial development version, not released yet.
 - `acme_kvstore::deploy` mock mode (`mock`, or `acme_kvstore::deploy::mock`
   in Hiera) for tests: no KV access, a stable fake certificate per certid
   from a mock PKI valid until 2099; also as `acme_kvstore::mock_cert`.
+- Certificate lifetime: `valid_days` (requested `notAfter`, for CAs such as
+  step-ca or Google Trust Services, checked against the CA profile's
+  `min_valid_days`/`max_valid_days` at compile time) and `acme_profile`
+  (ACME profiles such as Let's Encrypt's `shortlived`); per certificate, CA
+  profile or globally; a change reissues at once.
 - Typed parameters (`types/`), defaults in module Hiera data with
   deep-merged hashes.
 - Tests: rspec-puppet/RuboCop/puppet-lint via voxpupuli-test on OpenVox 8

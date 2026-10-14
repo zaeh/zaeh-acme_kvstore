@@ -85,6 +85,7 @@ The following parameters are available in the `acme_kvstore` class:
 * [`proxy`](#-acme_kvstore--proxy)
 * [`renew_schedule`](#-acme_kvstore--renew_schedule)
 * [`kv_updated_by`](#-acme_kvstore--kv_updated_by)
+* [`valid_days`](#-acme_kvstore--valid_days)
 
 ##### <a name="-acme_kvstore--backend"></a>`backend`
 
@@ -308,6 +309,15 @@ undef: the FQDN of the writing worker.
 
 Default value: `undef`
 
+##### <a name="-acme_kvstore--valid_days"></a>`valid_days`
+
+Data type: `Optional[Integer[1]]`
+
+Default lifetime in days requested from the CA (notAfter); only for CA
+profiles declaring min_valid_days/max_valid_days. undef: the CA decides.
+
+Default value: `undef`
+
 ### <a name="acme_kvstore--worker"></a>`acme_kvstore::worker`
 
 Included automatically on the worker by acme_kvstore::certificate.
@@ -352,7 +362,7 @@ Data type: `String[1]`
 acme.sh version: the version in the default archive URL for 'archive', the Git tag (or
 branch) for 'git'; pinned so updates are deliberate. A change is installed.
 
-Default value: `'3.0.9'`
+Default value: `'3.1.6'`
 
 ##### <a name="-acme_kvstore--worker--acme_git_url"></a>`acme_git_url`
 
@@ -377,7 +387,7 @@ Data type: `Pattern[/\A\h{64}\z/]`
 
 SHA-256 of the archive; the download is discarded on a mismatch.
 
-Default value: `'a599e8373cd327fb611362bec6f1bfb0bf65c97b3401c440cfea9304a0f0cb41'`
+Default value: `'0d3f9000ac44a6331314742a88c475f79134e24fc991997883652adc59efc486'`
 
 ##### <a name="-acme_kvstore--worker--manage_packages"></a>`manage_packages`
 
@@ -508,6 +518,8 @@ The following parameters are available in the `acme_kvstore::certificate` define
 * [`renew_before_days`](#-acme_kvstore--certificate--renew_before_days)
 * [`renew_schedule`](#-acme_kvstore--certificate--renew_schedule)
 * [`purge_key_on_mismatch`](#-acme_kvstore--certificate--purge_key_on_mismatch)
+* [`valid_days`](#-acme_kvstore--certificate--valid_days)
+* [`acme_profile`](#-acme_kvstore--certificate--acme_profile)
 * [`store_issuers`](#-acme_kvstore--certificate--store_issuers)
 * [`tags`](#-acme_kvstore--certificate--tags)
 * [`challenge_type`](#-acme_kvstore--certificate--challenge_type)
@@ -608,6 +620,24 @@ Data type: `Boolean`
 Whether a changed key_type/key_size forces an immediate reissue.
 
 Default value: `$acme_kvstore::purge_key_on_mismatch`
+
+##### <a name="-acme_kvstore--certificate--valid_days"></a>`valid_days`
+
+Data type: `Optional[Integer[1]]`
+
+Requested lifetime in days (notAfter), for CAs whose profile declares
+min_valid_days/max_valid_days. A change reissues at once.
+
+Default value: `undef`
+
+##### <a name="-acme_kvstore--certificate--acme_profile"></a>`acme_profile`
+
+Data type: `Optional[String[1]]`
+
+ACME profile to request, e.g. Let's Encrypt's 'shortlived'. A change
+reissues at once.
+
+Default value: `undef`
 
 ##### <a name="-acme_kvstore--certificate--store_issuers"></a>`store_issuers`
 
@@ -1106,6 +1136,7 @@ Default value: `present`
 The following parameters are available in the `acme_kvstore_certificate` type.
 
 * [`account_email`](#-acme_kvstore_certificate--account_email)
+* [`acme_profile`](#-acme_kvstore_certificate--acme_profile)
 * [`acmesh_path`](#-acme_kvstore_certificate--acmesh_path)
 * [`area`](#-acme_kvstore_certificate--area)
 * [`area_secret`](#-acme_kvstore_certificate--area_secret)
@@ -1141,12 +1172,18 @@ The following parameters are available in the `acme_kvstore_certificate` type.
 * [`store_issuers`](#-acme_kvstore_certificate--store_issuers)
 * [`tags`](#-acme_kvstore_certificate--tags)
 * [`updated_by`](#-acme_kvstore_certificate--updated_by)
+* [`valid_days`](#-acme_kvstore_certificate--valid_days)
 * [`webroot`](#-acme_kvstore_certificate--webroot)
 
 ##### <a name="-acme_kvstore_certificate--account_email"></a>`account_email`
 
 ACME account email registered with the CA (acme.sh --register-account -m). Usually resolved
 from a CA profile by acme_kvstore::certificate.
+
+##### <a name="-acme_kvstore_certificate--acme_profile"></a>`acme_profile`
+
+ACME profile to request (acme.sh --cert-profile), e.g. Let's Encrypt's 'shortlived'. Unset: the CA's
+default profile. A change reissues the certificate at once.
 
 ##### <a name="-acme_kvstore_certificate--acmesh_path"></a>`acmesh_path`
 
@@ -1357,6 +1394,11 @@ Default value: `[]`
 Value of the 'updated_by' / 'created_by' fields. Defaults to this node's certname; usually
 resolved from $acme_kvstore::kv_updated_by or the worker's FQDN by acme_kvstore::certificate.
 
+##### <a name="-acme_kvstore_certificate--valid_days"></a>`valid_days`
+
+Requested lifetime in days (ACME notAfter, acme.sh --valid-to +<n>d), for CAs that support it.
+Unset: the CA decides. A change reissues the certificate at once.
+
 ##### <a name="-acme_kvstore_certificate--webroot"></a>`webroot`
 
 HTTP-01 only: webroot directory acme.sh writes the challenge files to (acme.sh --webroot).
@@ -1550,7 +1592,8 @@ Data type: `Optional[Hash]`
 Optional settings: key_type, key_size, server, dns_provider, dns_env, dns_options,
 challenge_alias, domain_alias, account_email, eab_kid, eab_hmac_key, proxy,
 exec_timeout, run_as_user, run_as_group, run_as_home, acmesh_path, dnssleep (default 60), webroot,
-log_file, log_level, ca_bundles (files of CA certificates acme.sh trusts instead of the system store).
+log_file, log_level, ca_bundles (files of CA certificates acme.sh trusts instead of the system store),
+valid_days (requested lifetime, notAfter), acme_profile (ACME profile).
 
 ## Data types
 
@@ -1591,7 +1634,9 @@ directory_url is omitted for acme.sh's built-in CA aliases (the profile
 name is used instead). The CA certificates acme.sh trusts for this CA
 (instead of the system trust store) are given either as PEM text
 (ca_certificates, written to the worker) or as a file already on the
-worker (ca_bundle), not both. See docs/profiles.md.
+worker (ca_bundle), not both. valid_days/acme_profile are defaults for the
+certificate lifetime; min_valid_days/max_valid_days declare that the CA
+accepts a requested lifetime (notAfter) and its limits. See docs/profiles.md.
 
 Alias of
 
@@ -1603,6 +1648,10 @@ Struct[{
   Optional['eab_hmac_key']    => Acme_kvstore::Secret,
   Optional['ca_certificates'] => Pattern[/-----BEGIN CERTIFICATE-----/],
   Optional['ca_bundle']       => Stdlib::Absolutepath,
+  Optional['valid_days']      => Integer[1],
+  Optional['min_valid_days']  => Integer[1],
+  Optional['max_valid_days']  => Integer[1],
+  Optional['acme_profile']    => String[1],
 }]
 ```
 
@@ -1646,6 +1695,8 @@ Struct[{
   Optional['proxy']                 => String[1],
   Optional['exec_timeout']          => Integer[1],
   Optional['renew_schedule']        => String[1],
+  Optional['valid_days']            => Integer[1],
+  Optional['acme_profile']          => String[1],
 }]
 ```
 

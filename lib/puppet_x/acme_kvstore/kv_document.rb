@@ -47,7 +47,7 @@ module PuppetX::AcmeKvstore
     # @param version [Integer] the version the summary describes
     # @param issuers [Array<String>] certids (fingerprints) of its chain, issuer first
     # @return [Hash] the 'acme_renewal' summary stored in the meta document
-    def self.renewal_summary(not_after:, domains:, key_type:, key_size:, version: nil, issuers: nil)
+    def self.renewal_summary(not_after:, domains:, key_type:, key_size:, version: nil, issuers: nil, valid_days: nil, acme_profile: nil)
       summary = {
         'not_after' => not_after.utc.strftime('%Y-%m-%dT%H:%M:%SZ'),
         'domains'   => domains,
@@ -56,6 +56,9 @@ module PuppetX::AcmeKvstore
       }
       summary['version'] = version if version
       summary['issuers'] = issuers if issuers
+      # Only when requested, so summaries without them stay as they were.
+      summary['valid_days'] = valid_days if valid_days
+      summary['acme_profile'] = acme_profile if acme_profile
       summary
     end
 

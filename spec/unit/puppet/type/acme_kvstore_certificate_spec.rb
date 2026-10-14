@@ -39,6 +39,14 @@ describe Puppet::Type.type(:acme_kvstore_certificate) do
     expect { described_class.new(base_params.merge(ca_bundles: ['/etc/a.pem', 'b.pem'])) }.to raise_error(Puppet::Error, %r{ca_bundles must be absolute paths, not 'b.pem'})
   end
 
+  it 'accepts valid_days as a positive number of days and an ACME profile name' do
+    resource = described_class.new(base_params.merge(valid_days: '30', acme_profile: 'shortlived'))
+    expect(resource[:valid_days]).to eq(30)
+    expect(resource[:acme_profile]).to eq('shortlived')
+    expect { described_class.new(base_params.merge(valid_days: 0)) }.to raise_error(Puppet::Error, %r{valid_days must be a positive number})
+    expect { described_class.new(base_params.merge(acme_profile: 'short lived')) }.to raise_error(Puppet::Error, %r{acme_profile must be a profile name})
+  end
+
   it 'rejects an empty domains list' do
     expect do
       described_class.new(base_params.merge(domains: []))

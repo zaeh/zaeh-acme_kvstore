@@ -108,7 +108,7 @@ PDK are deliberately not part of CI. Keep the matrix in step with the lanes abov
 
 Acceptance tests (`spec/acceptance/`, not Litmus) run against real services in containers from
 `spec/acceptance/compose.yml` - Consul with ACLs, Redis with ACL users, and Pebble (Let's Encrypt's
-test CA, `PEBBLE_VA_ALWAYS_VALID`) - with the real providers, KV clients and acme.sh 3.0.9 (tarball,
+test CA, `PEBBLE_VA_ALWAYS_VALID`) - with the real providers, KV clients and acme.sh 3.1.6 (tarball,
 SHA-256 pinned in `acceptance_helper.rb`): `bundle exec rake acceptance` (up, run, down; needs Docker
 with compose). They are deliberately outside `rake spec`'s pattern (which includes `spec/integration/`).
 Rules: pin image versions; credentials are generated per run or throwaway test values; each run
@@ -229,6 +229,11 @@ warns. OpenVox 9 is deliberately not covered there (build time); its server JRub
   reflect whether `acme_renewal` exists, or `destroy` never gets called for a soon-expiring
   certificate. This was a real bug caught during development; re-check this specific interaction
   if you touch `exists?`.
+- **Lifetime drift** (`valid_days`, `acme_profile`): `acme_renewal` records what was *requested*
+  (only when set, so older summaries stay as they were); `exists?` compares that with the
+  configuration (`lifetime_drifted?`) only for the module's own summary - one derived from another
+  version active in CCI-UI cannot know it. Missing fields mean "not requested", so a module update
+  alone never reissues. The actual lifetime is no comparison basis (CAs may ignore `notAfter`).
 - **`status` controls distribution only** (`acme_kvstore::deploy`: `active` writes files,
   `delete` removes them, anything else leaves them alone; `CertLookup` returns data only for
   `active`). The worker never reads it for decisions and never changes it after first issuance
@@ -342,12 +347,14 @@ warns. OpenVox 9 is deliberately not covered there (build time); its server JRub
 - **`run_as_user`/`run_as_group`** are `Process.spawn` options, not shell `sudo`/`su` wrapping - they
   affect only the spawned `acme.sh`/`posthook_cmd` child, never the Puppet agent process itself.
 - **Never guess an `acme.sh` CLI flag or environment-variable convention.** Every flag currently in
-  `acmesh.rb` (`--challenge-alias`, `--domain-alias`, `--eab-kid`, `--eab-hmac-key`,
+  `acmesh.rb` (`--challenge-alias`, `--domain-alias`, `--eab-kid`, `--eab-hmac-key`, `--valid-to`
+  (relative `+<n>d`), `--cert-profile` (3.1.2 and later; both checked in the 3.1.6 source),
   `--register-account`, the `HTTP(S)_PROXY` convention) was individually verified against
   acme.sh's own documentation before being added; `--dnssleep` (which also disables acme.sh's own
   public DNS polling), `--log`, `--log-level` (1 or 2 only), `--webroot` and `--force` (which `--issue`
   needs: without it acme.sh skips with exit 2 while its own renewal date is ahead) were verified against
-  the acme.sh 3.0.9 source, as was `dns_nsupdate` expecting `NSUPDATE_KEY` to be a key *file path*,
+  the acme.sh 3.0.9 source and again for 3.1.6 (option parsing identical; `issue` still skips only
+  without `--force`), as was `dns_nsupdate` expecting `NSUPDATE_KEY` to be a key *file path*,
   and `_findHook` looking in `<home>/dnsapi/<hook>.sh` first, then sourcing it (read access
   suffices) and calling `<hook>_add`/`<hook>_rm` (basis of `acme_kvstore::dnsapi_scripts`).
   Verify before adding another, and say so.

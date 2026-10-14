@@ -184,6 +184,27 @@ Puppet::Type.newtype(:acme_kvstore_certificate) do
     end
   end
 
+  newparam(:valid_days) do
+    desc <<-EOT
+      Requested lifetime in days (ACME notAfter, acme.sh --valid-to +<n>d), for CAs that support it.
+      Unset: the CA decides. A change reissues the certificate at once.
+    EOT
+    validate do |value|
+      raise ArgumentError, "valid_days must be a positive number of days, not '#{value}'" unless value.to_s.match?(%r{\A[1-9]\d*\z})
+    end
+    munge { |value| Integer(value) }
+  end
+
+  newparam(:acme_profile) do
+    desc <<-EOT
+      ACME profile to request (acme.sh --cert-profile), e.g. Let's Encrypt's 'shortlived'. Unset: the CA's
+      default profile. A change reissues the certificate at once.
+    EOT
+    validate do |value|
+      raise ArgumentError, "acme_profile must be a profile name, not '#{value}'" unless value.to_s.match?(%r{\A[A-Za-z0-9._-]+\z})
+    end
+  end
+
   newparam(:ca_bundles) do
     desc <<-EOT
       Files of CA certificates acme.sh trusts instead of the system trust store, for all of its

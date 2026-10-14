@@ -170,7 +170,7 @@ other hook, never into the script itself.
 
 `acme_kvstore::worker` installs it as `<home>/dnsapi/<hook>.sh` (e.g.
 `/home/acme/.acme.sh/dnsapi/dns_rockenstein.sh`), owned by `root`, group
-`<group>`, mode `0640`, after acme.sh itself: acme.sh 3.0.9 looks in its
+`<group>`, mode `0640`, after acme.sh itself: acme.sh looks in its
 own `dnsapi/` directory first and only sources the file, so read access
 is all the acme.sh user gets.
 
@@ -213,6 +213,9 @@ class { 'acme_kvstore':
 | `eab_kid` / `eab_hmac_key` | no | External Account Binding credentials, required by some CAs (ZeroSSL, SSL.com, Google Public CA) - see each CA's page on the [acme.sh wiki](https://github.com/acmesh-official/acme.sh/wiki) for how to obtain them. |
 | `ca_certificates` | no | CA certificates (PEM, one or more) of the CA's TLS certificate, e.g. the root of a private [step-ca](https://smallstep.com/docs/step-ca/). Not together with `ca_bundle`. See [CA certificates](#ca-certificates-for-private-cas-and-dns-apis). |
 | `ca_bundle` | no | The same as a file that is already on the worker (absolute path), e.g. a company CA bundle. Not together with `ca_certificates`. |
+| `min_valid_days` / `max_valid_days` | no | Declare that this CA accepts a requested lifetime (ACME `notAfter`) and its limits - e.g. the provisioner claims of a step-ca, or 1/90 for Google Trust Services. Required for `valid_days`. See [Certificate lifetime](#certificate-lifetime). |
+| `valid_days` | no | Default lifetime in days for certificates of this CA profile. |
+| `acme_profile` | no | Default ACME profile for certificates of this CA profile, e.g. Let's Encrypt's `shortlived`. |
 
 A certificate picks a CA profile with `use_ca_profile`, defaulting to
 `$acme_kvstore::default_ca_profile`:
@@ -273,6 +276,55 @@ must itself be both a `$ca_profiles` key and a `$ca_whitelist` entry, and
 every `$ca_whitelist` entry must have a matching `$ca_profiles` entry -
 `acme_kvstore` validates all of this itself and fails with a clear message
 otherwise.
+
+## Certificate lifetime
+
+Without any setting, the CA decides the lifetime. Two ways to choose it,
+depending on what the CA supports:
+
+| CA | Mechanism | Setting |
+| --- | --- | --- |
+| step-ca | requested `notAfter`, within the provisioner's min/max | `valid_days`, with `min_valid_days`/`max_valid_days` in the CA profile |
+| Google Trust Services | requested `notAfter`, 1-90 days | `valid_days`, with `min_valid_days: 1`, `max_valid_days: 90` |
+| Let's Encrypt | ACME profiles (`classic`, the default with 90 days; `shortlived`, 6 days; ...), no `notAfter` | `acme_profile` |
+| other CAs | check their documentation; some ignore `notAfter` | |
+
+- **`valid_days`** (per certificate, else the CA profile's, else
+  `acme_kvstore::valid_days`) is sent as `notAfter` (acme.sh `--valid-to
+  +<n>d`). It is only accepted for a CA profile that declares
+  `min_valid_days` and/or `max_valid_days`; a value outside them, or one
+  not lower than `renew_before_days`, fails at compile time - before any
+  challenge, and before a CA such as step-ca would reject the order only
+  when signing it. If the CA issues a lifetime that differs by more than a
+  day, the worker warns (some CAs ignore `notAfter`).
+- **`acme_profile`** (per certificate, else the CA profile's) is sent as
+  ACME profile (acme.sh `--cert-profile`, acme.sh 3.1.2 and later). The
+  names come from the CA's directory; a name the CA does not offer makes
+  the order fail.
+
+A changed, newly set or removed `valid_days`/`acme_profile` reissues the
+certificate at once (see [Configuration drift](#configuration-drift)).
+
+```yaml
+acme_kvstore::ca_profiles:
+  stepca:
+    directory_url: 'https://stepca.example.com:9000/acme/acme/directory'
+    min_valid_days: 1        # the provisioner's minTLSCertDuration
+    max_valid_days: 90       # ... and maxTLSCertDuration
+    valid_days: 30           # default for this CA
+  letsencrypt:
+    acme_profile: 'classic'
+acme_kvstore::certificates:
+  shop-example-com:
+    domain: 'shop.example.com'
+    valid_days: 14           # this certificate only
+    renew_before_days: 5
+  api-example-com:
+    domain: 'api.example.com'
+    use_ca_profile: 'letsencrypt'
+    acme_profile: 'shortlived'   # 6 days
+    renew_before_days: 2
+```
 
 ## Account registration
 
@@ -406,6 +458,12 @@ for the certificate to merely approach its expiry date:
   from `subject_alt_names` (their order does not matter).
 - **`key_type`** changed (`rsa` <-> `ec`).
 - **`key_size`** changed (e.g. `2048` -> `4096`, or `256` -> `384` for EC).
+- **`valid_days`** or **`acme_profile`** changed, newly set or removed (see
+  [Certificate lifetime](#certificate-lifetime)). The summary records what
+  was requested; summaries without these fields (certificates issued before)
+  count as "not requested", so updating the module alone reissues nothing.
+  If another version was activated in CCI-UI, what was requested for it is
+  unknown, and this is not counted as drift.
 
 Since every reissue always writes a brand new certificate **and** key
 version (see [architecture.md](architecture.md)), there is never an old,

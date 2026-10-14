@@ -38,8 +38,10 @@ module PuppetX::AcmeKvstore
         return true
       end
 
+      own_summary = summary['version'].nil? || summary['version'] == meta['active_version']
       summary = active_summary(meta, summary)
       return false if config_drifted?(summary)
+      return false if own_summary && lifetime_drifted?(summary)
       return true unless renewal_due?(summary['not_after'])
       return false if in_renew_window?
 
@@ -75,10 +77,13 @@ module PuppetX::AcmeKvstore
         run_as_home: resource[:run_as_home],
         acmesh_path: resource[:acmesh_path],
         ca_bundles: resource[:ca_bundles],
+        valid_days: resource[:valid_days],
+        acme_profile: resource[:acme_profile],
       )
       raise Puppet::Error, "acme.sh did not return a certificate for '#{certid}'" if result[:cert].nil?
 
       leaf = kv_doc.split_pem(result[:cert]).first
+      warn_on_other_lifetime(leaf)
       # Before the certificate, so its chain is always stored when it is.
       issuers = resource[:store_issuers] ? store_issuers(area, result[:chain]) : nil
 
@@ -164,11 +169,13 @@ module PuppetX::AcmeKvstore
     def renewal_summary(leaf, version, issuers)
       kv_doc.renewal_summary(
         not_after: leaf.not_after,
-        domains:   resource[:domains],
-        key_type:  resource[:key_type],
-        key_size:  resource[:key_size],
+        domains: resource[:domains],
+        key_type: resource[:key_type],
+        key_size: resource[:key_size],
         version:,
         issuers:,
+        valid_days: resource[:valid_days],
+        acme_profile: resource[:acme_profile],
       )
     end
 
@@ -320,6 +327,27 @@ module PuppetX::AcmeKvstore
       return true unless summary['key_size'].to_i == resource[:key_size].to_i
 
       false
+    end
+
+    # The requested valid_days/acme_profile, as recorded at the last issuance
+    # (missing: not requested). Only for the module's own summary: one derived
+    # from another active version (CCI-UI) cannot know what was requested.
+    def lifetime_drifted?(summary)
+      return true unless summary['valid_days'] == resource[:valid_days]
+
+      summary['acme_profile'] != resource[:acme_profile]
+    end
+
+    # A CA may ignore notAfter (e.g. Buypass); say so instead of renewing blindly.
+    def warn_on_other_lifetime(leaf)
+      requested = resource[:valid_days]
+      return if requested.nil?
+
+      actual = (leaf.not_after - leaf.not_before) / 86_400.0
+      return if (actual - requested).abs <= 1
+
+      Puppet.warning("acme_kvstore_certificate[#{resource[:certid]}]: requested #{requested} days, " \
+                     "but the CA issued #{actual.round(1)} days (it may not support notAfter)")
     end
 
     # Only logged on failure: the certificate is already issued and stored.

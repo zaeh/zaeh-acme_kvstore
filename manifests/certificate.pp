@@ -17,6 +17,12 @@
 #   Name of a 'schedule' resource whose range/weekday limit when a due
 #   renewal may run; first issuance is never delayed. undef: any time.
 # @param purge_key_on_mismatch Whether a changed key_type/key_size forces an immediate reissue.
+# @param valid_days
+#   Requested lifetime in days (notAfter), for CAs whose profile declares
+#   min_valid_days/max_valid_days. A change reissues at once.
+# @param acme_profile
+#   ACME profile to request, e.g. Let's Encrypt's 'shortlived'. A change
+#   reissues at once.
 # @param store_issuers Whether the chain certificates acme.sh returns are stored as issuer entries.
 # @param tags Free-form tags stored with the certificate.
 # @param challenge_type Challenge type, 'http-01' or 'dns-01'; auto-detected if undef, a mismatch fails if set.
@@ -49,6 +55,10 @@ define acme_kvstore::certificate (
   Integer[1]                              $renew_before_days     = $acme_kvstore::renew_before_days,
   Optional[String[1]]                     $renew_schedule        = $acme_kvstore::renew_schedule,
   Boolean                                 $purge_key_on_mismatch = $acme_kvstore::purge_key_on_mismatch,
+
+  # Lifetime (undef: the CA profile's, then acme_kvstore's, else the CA decides)
+  Optional[Integer[1]]                    $valid_days            = undef,
+  Optional[String[1]]                     $acme_profile          = undef,
 
   # Storage
   Boolean                                 $store_issuers         = $acme_kvstore::store_issuers,
@@ -138,6 +148,26 @@ define acme_kvstore::certificate (
     $account_email = $ca_profile['account_email']
     $eab_kid = acme_kvstore::unwrap_if_sensitive($ca_profile['eab_kid'])
     $eab_hmac_key = acme_kvstore::unwrap_if_sensitive($ca_profile['eab_hmac_key'])
+
+    # Lifetime: this certificate's, else the CA profile's, else acme_kvstore's.
+    $real_valid_days = [$valid_days, $ca_profile['valid_days'], $acme_kvstore::valid_days].filter |$value| { $value =~ NotUndef }[0]
+    $real_acme_profile = $acme_profile ? { undef => $ca_profile['acme_profile'], default => $acme_profile }
+    if $real_valid_days =~ NotUndef {
+      $min_valid_days = $ca_profile['min_valid_days']
+      $max_valid_days = $ca_profile['max_valid_days']
+      if $min_valid_days =~ Undef and $max_valid_days =~ Undef {
+        fail("acme_kvstore::certificate[${title}]: valid_days ${real_valid_days} requested, but CA profile '${use_ca_profile}' declares no min_valid_days/max_valid_days - not every CA accepts a requested lifetime (Let's Encrypt does not; use acme_profile there)")
+      }
+      if $min_valid_days =~ NotUndef and $real_valid_days < $min_valid_days {
+        fail("acme_kvstore::certificate[${title}]: valid_days ${real_valid_days} is below min_valid_days ${min_valid_days} of CA profile '${use_ca_profile}'")
+      }
+      if $max_valid_days =~ NotUndef and $real_valid_days > $max_valid_days {
+        fail("acme_kvstore::certificate[${title}]: valid_days ${real_valid_days} is above max_valid_days ${max_valid_days} of CA profile '${use_ca_profile}'")
+      }
+      if $renew_before_days >= $real_valid_days {
+        fail("acme_kvstore::certificate[${title}]: renew_before_days ${renew_before_days} must be lower than valid_days ${real_valid_days}, or it would renew on every run")
+      }
+    }
 
     # A manual dns_provider wins over any profile.
     $real_dns_profile_name = $use_dns_profile ? { undef => $acme_kvstore::default_dns_profile, default => $use_dns_profile }
@@ -243,6 +273,8 @@ define acme_kvstore::certificate (
       eab_kid               => $eab_kid,
       eab_hmac_key          => $eab_hmac_key,
       ca_bundles            => $ca_bundles,
+      valid_days            => $real_valid_days,
+      acme_profile          => $real_acme_profile,
       dns_provider          => $resolved_hook,
       dns_env               => $resolved_env,
       dns_options           => $resolved_options,

@@ -120,6 +120,24 @@ describe 'acme_kvstore' do
         it { is_expected.to compile.and_raise_error(%r{DNS profile\(s\) infoblox set both 'ca_certificates' and 'ca_bundle'}) }
       end
 
+      {
+        'min_valid_days above max_valid_days' => [{ 'min_valid_days' => 30, 'max_valid_days' => 7 }, %r{min_valid_days \(30\) is greater than max_valid_days \(7\)}],
+        'valid_days without limits' => [{ 'valid_days' => 30 }, %r{sets valid_days but declares no min_valid_days/max_valid_days}],
+        'valid_days outside its limits' => [{ 'valid_days' => 120, 'max_valid_days' => 90 }, %r{valid_days \(120\) is outside min_valid_days/max_valid_days}],
+      }.each do |problem, (lifetime, message)|
+        context "with a CA profile with #{problem}" do
+          let(:params) do
+            {
+              'consul'      => { 'url' => 'https://consul.example.com:8501' },
+              'areas'       => { 'web' => { 'secret' => 'S' * 32, 'consul_token' => 'web-token' } },
+              'ca_profiles' => { 'letsencrypt' => {}, 'letsencrypt_test' => {}, 'stepca' => lifetime },
+            }
+          end
+
+          it { is_expected.to compile.and_raise_error(message) }
+        end
+      end
+
       context 'with a ca_whitelist entry that has no matching ca_profiles entry' do
         let(:params) do
           {

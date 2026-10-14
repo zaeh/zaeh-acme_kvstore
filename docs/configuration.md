@@ -103,6 +103,7 @@ invalid values fail at compile time.
 | `challenge_alias`, `domain_alias` | `Stdlib::Fqdn` |
 | `dnssleep`, `exec_timeout` | `Integer[1]` |
 | `posthook_cmd`, `proxy`, `renew_schedule` | `String[1]` |
+| `valid_days`, `acme_profile` | `Integer[1]`, `String[1]` |
 
 The same hash can be given to every node: each certificate only takes
 effect on its responsible worker (`worker`, else `default_worker`). Since
@@ -158,6 +159,7 @@ been evaluated.
 | `dh_param_size` | `Acme_kvstore::Dh_param_size` (`2048`, `3072`, `4096`) | `2048` | Default size of the DH parameters written by `acme_kvstore::deploy` (read from Hiera by `deploy`). |
 | `kv_client` | `Pattern[/\A[a-zA-Z0-9_.-]{1,120}\z/]` | `'puppet'` | Value of the `client` field in the KV documents (see [architecture.md](architecture.md#kv-data-formats)); names referring to `acme` are rejected, as by [CCI-UI](cci-ui.md). |
 | `kv_updated_by` | `Optional[String[1, 255]]` | `undef` (-> FQDN of the writing worker) | Value of the `updated_by`/`created_by` fields in the KV documents. |
+| `valid_days` | `Optional[Integer[1]]` | `undef` (-> the CA decides) | Default requested lifetime in days, for CA profiles declaring `min_valid_days`/`max_valid_days`. See [profiles.md](profiles.md#certificate-lifetime). |
 | `certificates` | `Hash[Acme_kvstore::Certid, Acme_kvstore::Certificate_params]` | `{}` | Certificates to manage: `certid` => `acme_kvstore::certificate` parameters. See [Certificates in Hiera](#certificates-in-hiera). |
 
 ### Data types
@@ -242,10 +244,10 @@ them.
 | Parameter | Type | Default | Description |
 | --- | --- | --- | --- |
 | `install_method` | `Enum['archive','git']` | `'archive'` | How acme.sh is installed: from a tarball (`archive`, e.g. from a local mirror) or as a shallow Git clone (`git`). Either downloads once per `acme_version` into a directory of its own (`/opt/acme.sh-<version>` or `/opt/acme.sh-git-<version>`); later runs need no access to the source. |
-| `acme_version` | `String[1]` | `'3.0.9'` | acme.sh version: the version in the default archive URL for `archive`, the Git tag (or branch) for `git`. Pinned, so acme.sh is only updated deliberately; a changed version is installed on the next run. |
+| `acme_version` | `String[1]` | `'3.1.6'` | acme.sh version: the version in the default archive URL for `archive`, the Git tag (or branch) for `git`. Pinned, so acme.sh is only updated deliberately; a changed version is installed on the next run. |
 | `acme_git_url` | `String[1]` | the official GitHub repo | Git URL to clone acme.sh from for `git`. Override to use an internal mirror. |
 | `acme_archive_url` | `Stdlib::HTTPUrl` | the GitHub archive of `acme_version`, built in the module's Hiera data from the `acme_version` set in Hiera | Tarball for `archive`, e.g. on a local mirror. Unpacked into `/opt/acme.sh-<acme_version>`, whatever its top directory. |
-| `acme_archive_sha256` | `Pattern[/\A\h{64}\z/]` | SHA-256 of the GitHub archive of 3.0.9 | Checksum of the tarball; Puppet discards a download that does not match. Change it together with `acme_version`/`acme_archive_url`. |
+| `acme_archive_sha256` | `Pattern[/\A\h{64}\z/]` | SHA-256 of the GitHub archive of 3.1.6 | Checksum of the tarball; Puppet discards a download that does not match. Change it together with `acme_version`/`acme_archive_url`. |
 | `manage_packages` | `Boolean` | `true` | Installs the `git` package needed by `install_method => 'git'`. |
 | `manage_gems` | `Boolean` | `false` | Installs the `redis` gem, which the worker needs for the Redis backend only. |
 | `manage_user` | `Boolean` | `false` | Whether to create the `user`/`group` accounts (`false` to reuse an existing account). |
@@ -267,7 +269,7 @@ the source. For a worker that cannot reach GitHub, put the tarball on a local
 mirror:
 
 ```yaml
-acme_kvstore::worker::acme_archive_url: 'https://mirror.example.com/acme.sh/3.0.9.tar.gz'
+acme_kvstore::worker::acme_archive_url: 'https://mirror.example.com/acme.sh/3.1.6.tar.gz'
 acme_kvstore::worker::acme_archive_sha256: '<sha256sum of that file>'
 ```
 
@@ -304,6 +306,8 @@ removed.
 | `proxy` | `Optional[String[1]]` | `$acme_kvstore::proxy` | HTTP(S) proxy for acme.sh's outbound connections. |
 | `exec_timeout` | `Integer[1]` | `$acme_kvstore::exec_timeout` | Maximum time in seconds any single acme.sh invocation may run. |
 | `renew_schedule` | `Optional[String[1]]` | `$acme_kvstore::renew_schedule` | Name of a `schedule` resource limiting when a due renewal runs. |
+| `valid_days` | `Optional[Integer[1]]` | `undef` (-> CA profile's, then `$acme_kvstore::valid_days`) | Requested lifetime in days (ACME `notAfter`). See [profiles.md](profiles.md#certificate-lifetime). |
+| `acme_profile` | `Optional[String[1]]` | `undef` (-> CA profile's) | ACME profile to request, e.g. Let's Encrypt's `shortlived`. |
 
 `run_as_user`, `run_as_group`, `run_as_home`, `acmesh_path`, `webroot`,
 `log_file` and `log_level` are not exposed here - they are always resolved

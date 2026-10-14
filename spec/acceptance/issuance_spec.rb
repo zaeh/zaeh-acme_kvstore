@@ -126,6 +126,28 @@ require_relative 'acceptance_helper'
       end
     end
 
+    # Pebble applies both: notAfter as requested, and its profiles
+    # 'default' (90 days) and 'shortlived' (6 days).
+    def lifetime_days(version)
+      leaf = OpenSSL::X509::Certificate.new(read("web/certs/#{certid}/#{version}")['pem'])
+      (leaf.not_after - leaf.not_before) / 86_400.0
+    end
+
+    it 'requests a lifetime (notAfter) and records it' do
+      provider(valid_days: 3).create
+      expect(lifetime_days(1)).to be_within(0.1).of(3)
+      expect(read("web/certids/#{certid}")['acme_renewal']).to include('valid_days' => 3)
+    end
+
+    it 'requests an ACME profile and records it' do
+      provider(acme_profile: 'shortlived').create
+      provider(acme_profile: 'default', renew_before_days: 3650).create
+
+      expect(lifetime_days(1)).to be_within(0.1).of(6)
+      expect(lifetime_days(2)).to be_within(0.1).of(90)
+      expect(read("web/certids/#{certid}")['acme_renewal']).to include('acme_profile' => 'default')
+    end
+
     it 'stores no issuer entries with store_issuers => false' do
       provider(store_issuers: false).create
       expect(read("web/certids/#{certid}")['acme_renewal']).not_to have_key('issuers')
