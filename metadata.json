@@ -3,7 +3,7 @@
   "version": "0.1.0",
   "author": "Sascha Ehrkamp",
   "summary": "ACME certificate management without exported resources - storage in Consul or Redis.",
-  "license": "AGPL-3.0-only",
+  "license": "AGPL-3.0-or-later",
   "source": "https://github.com/zaeh/zaeh-acme_kvstore",
   "project_page": "https://github.com/zaeh/zaeh-acme_kvstore",
   "issues_url": "https://github.com/zaeh/zaeh-acme_kvstore/issues",
