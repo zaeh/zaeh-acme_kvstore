@@ -1,7 +1,7 @@
 # zaeh-acme_kvstore
 
 [![CI](https://github.com/zaeh/zaeh-acme_kvstore/actions/workflows/ci.yml/badge.svg)](https://github.com/zaeh/zaeh-acme_kvstore/actions/workflows/ci.yml)
-[![License: AGPL-3.0-only](https://img.shields.io/badge/license-AGPL--3.0--only-blue.svg)](LICENSE)
+[![License: AGPL-3.0-or-later](https://img.shields.io/badge/license-AGPL--3.0--or--later-blue.svg)](LICENSE)
 
 A Puppet module for managing ACME/Let's Encrypt certificates, broadly
 modelled on the functionality of
@@ -152,6 +152,6 @@ See [CONTRIBUTING.md](CONTRIBUTING.md) for how to test and contribute,
 
 ## Licence
 
-[GNU Affero General Public License v3.0 only](LICENSE)
-(`AGPL-3.0-only`). Contains no code from `puppet-acme`; only the broad
+[GNU Affero General Public License v3.0 or later](LICENSE)
+(`AGPL-3.0-or-later`). Contains no code from `puppet-acme`; only the broad
 functional/parameter concept is modelled on that module.

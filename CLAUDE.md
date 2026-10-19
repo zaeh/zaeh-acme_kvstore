@@ -382,7 +382,7 @@ warns. OpenVox 9 is deliberately not covered there (build time); its server JRub
 - `metadata.json` is the source of truth for the supported OS matrix (RedHat, Rocky, Debian, Ubuntu); `on_supported_os` in specs derives from it. Update it when adding/removing platform support.
 - Bump `version` per [SemVer](https://semver.org): breaking change -> major, feature -> minor, fix -> patch.
 - `requirements` allows Puppet 8 and 9 (`>= 8.0.0 < 10.0.0`); keep code and specs in step with both lanes.
-- `license` is `AGPL-3.0-only` (SPDX), matching the verbatim GNU text in `LICENSE`.
+- `license` is `AGPL-3.0-or-later` (SPDX), matching the verbatim GNU text in `LICENSE`.
 - The `pdk-version`/`template-url`/`template-ref` fields were written by a real `pdk convert`
   (PDK 3.8.0) and `pdk update --template-ref 4.0.1` (PDK 4.0.1). Only ever let
   `pdk convert`/`pdk update` change them; never hand-edit them.

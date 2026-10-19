@@ -92,4 +92,4 @@ is committed and checked by CI. To update it, raise the pin, regenerate
 ## Licence
 
 By contributing, you agree that your contribution is licensed under the
-[GNU Affero General Public License v3.0 only](LICENSE), like the module.
+[GNU Affero General Public License v3.0 or later](LICENSE), like the module.

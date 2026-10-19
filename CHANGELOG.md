@@ -67,4 +67,4 @@ Initial development version, not released yet.
   issues with acme.sh against Pebble into real Consul and Redis (ACLs
   included), also in CI; `rake acceptance:e2e` runs a real OpenVox 8 server,
   ACME worker and consumer node (Ubuntu 24.04, Rocky 9) in CI. Licence:
-  AGPL-3.0-only.
+  AGPL-3.0-or-later.
